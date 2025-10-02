@@ -105,6 +105,6 @@ public:
     DrawIndexed(unsigned int IndexCount,
       unsigned int StartIndexLocation,
       int BaseVertexLocation);
-private:
+public:
   ID3D11DeviceContext* m_deviceContext = nullptr;
 };
