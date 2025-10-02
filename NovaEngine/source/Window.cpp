@@ -1,4 +1,5 @@
-#include "window.h"
+#include "Window.h"
+#include "Device.h"
 
 HRESULT 
 Window::init(HINSTANCE hInstance, int nCmdShow, WNDPROC wndProc) {
@@ -46,7 +47,6 @@ Window::init(HINSTANCE hInstance, int nCmdShow, WNDPROC wndProc) {
     return E_FAIL;
   }
     
-
   ShowWindow(m_hWnd, nCmdShow);
 
 	UpdateWindow(m_hWnd);
