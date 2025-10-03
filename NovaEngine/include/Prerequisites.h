@@ -1,5 +1,5 @@
 #pragma once
-// Librerias STD
+// Libraries STD
 #include <string>
 #include <sstream>
 #include <vector>
@@ -7,7 +7,7 @@
 #include <xnamath.h>
 #include <thread>
 
-// Librerias DirectX
+// Libraries DirectX
 #include <d3d11.h>
 #include <d3dx11.h>
 #include <d3dcompiler.h>
