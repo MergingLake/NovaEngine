@@ -12,29 +12,72 @@
 #include "MeshComponent.h"
 #include "Buffer.h"
 #include "SamplerState.h"
+#include "ModelLoader.h"
 
+/*
+	@class BaseApp
+	@brief The BaseApp class serves as the foundational application framework for a DirectX 11 application.
+	@note This class encapsulates the core components and functionalities required to initialize, run, and manage a DirectX 11 application, including window creation, device and context management, rendering loop, and resource handling.
+*/
 class
 	BaseApp {
 public:
+	/* 
+		@brief Constructor
+		@param hInst The instance handle of the application.
+		@param nCmdShow The command show parameter that specifies how the window is to be shown.
+	*/
 	BaseApp(HINSTANCE hInst, int nCmdShow);
+	
+	/* 
+		@brief Destructor
+	*/
 	~BaseApp() { destroy(); }
 
+	/*
+		@brief Runs the application.
+		@param hInst The instance handle of the application.
+		@param nCmdShow The command show parameter that specifies how the window is to be shown.
+		@return An integer representing the exit code of the application.
+	*/
 	int
 		run(HINSTANCE hInst, int nCmdShow);
 
+	/*
+		@brief Initializes the application.
+		@return HRESULT indicating success or failure of the operation.
+	*/
 	HRESULT
 		init();
 
+	/*
+		@brief Updates the application state.
+		@param deltaTime The time elapsed since the last update, in seconds.
+	*/
 	void
 		update(float deltaTime);
 
+	/*
+		@brief Renders the application.
+	*/
 	void
 		render();
 
+	/*
+		@brief Destroys the application and releases associated resources.
+	*/
 	void
 		destroy();
 
 private:
+	/*
+		@brief Window procedure for handling window messages.
+		@param hWnd The handle to the window.
+		@param message The message identifier.
+		@param wParam Additional message information (varies by message).
+		@param lParam Additional message information (varies by message).
+		@return LRESULT indicating the result of the message processing.
+	*/
 	static LRESULT CALLBACK
 		WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
@@ -52,6 +95,7 @@ private:
 	MeshComponent												m_mesh;
 	Buffer															m_vertexBuffer;
 	Buffer															m_indexBuffer;
+	ModelLoader													m_modelLoader;
 	Buffer															m_cbNeverChanges;
 	Buffer															m_cbChangeOnResize;
 	Buffer															m_cbChangesEveryFrame;

@@ -11,7 +11,7 @@ class DepthStencilView;
   @class RenderTargetView
   @brief A render target view encapsulates a render target buffer resource.
   @note A render target view is used in conjunction with a render target buffer to
-   control access to resource data.
+  control access to resource data.
 */
 class
   RenderTargetView {

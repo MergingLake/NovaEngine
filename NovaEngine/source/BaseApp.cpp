@@ -119,6 +119,16 @@ BaseApp::init() {
 	texcoord.InstanceDataStepRate = 0;
 	Layout.push_back(texcoord);
 
+	D3D11_INPUT_ELEMENT_DESC normal;
+	normal.SemanticName = "NORMAL";
+	normal.SemanticIndex = 0;
+	normal.Format = DXGI_FORMAT_R32G32B32_FLOAT;
+	normal.InputSlot = 0;
+	normal.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT /*0*/;
+	normal.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
+	normal.InstanceDataStepRate = 0;
+	Layout.push_back(normal);
+
 	// Create the Shader Program
 	hr = m_shaderProgram.init(m_device, "NovaEngine.fx", Layout);
 	if (FAILED(hr)) {
@@ -127,72 +137,14 @@ BaseApp::init() {
 		return hr;
 	}
 
-	// Create vertex buffer
-	SimpleVertex vertices[] =
-	{
-			{ XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT2(0.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
-			{ XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
+	// Load the mesh using ModelLoader
+	bool modelLoaded = m_modelLoader.LoadOBJ("models/Peashooter", m_mesh);
 
-			{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT2(0.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
-			{ XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
-
-			{ XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
-			{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-			{ XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 1.0f) },
-			{ XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
-
-			{ XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 1.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
-
-			{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT2(0.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 1.0f) },
-			{ XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT2(0.0f, 1.0f) },
-
-			{ XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT2(1.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
-			{ XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
-	};
-
-	unsigned int indices[] =
-	{
-			3,1,0,
-			2,1,3,
-
-			6,4,5,
-			7,4,6,
-
-			11,9,8,
-			10,9,11,
-
-			14,12,13,
-			15,12,14,
-
-			19,17,16,
-			18,17,19,
-
-			22,20,21,
-			23,20,22
-	};
-
-	// Integrar los vertices a meshcomponent
-	for (unsigned int i = 0; i < 24; i++) {
-		m_mesh.m_vertex.push_back(vertices[i]);
+	if (!modelLoaded) {
+		ERROR("Main", "InitDevice",
+			"Failed to load model using ModelLoader.");
+		return E_FAIL;
 	}
-	m_mesh.m_numVertex = 24;
-
-	// Integrar los indices a meshcomponent
-	for (unsigned int i = 0; i < 36; i++) {
-		m_mesh.m_index.push_back(indices[i]);
-	}
-	m_mesh.m_numIndex = 36;
 
 	// Create vertex buffer
 	hr = m_vertexBuffer.init(m_device, m_mesh, D3D11_BIND_VERTEX_BUFFER);
@@ -237,7 +189,7 @@ BaseApp::init() {
 		return hr;
 	}
 
-	hr = m_textureCube.init(m_device, "seafloor", ExtensionType::DDS);
+	hr = m_textureCube.init(m_device, "Textures/Peashooter_texture", ExtensionType::DDS);
 	// Load the Texture
 	if (FAILED(hr)) {
 		ERROR("Main", "InitDevice",
@@ -294,10 +246,17 @@ void BaseApp::update(float deltaTime)
 	cbChangesOnResize.mProjection = XMMatrixTranspose(m_Projection);
 	m_cbChangeOnResize.update(m_deviceContext, nullptr, 0, nullptr, &cbChangesOnResize, 0, 0);
 
+	/*
 	// Modify the color
 	m_vMeshColor.x = (sinf(t * 1.0f) + 1.0f) * 0.5f;
 	m_vMeshColor.y = (cosf(t * 3.0f) + 1.0f) * 0.5f;
 	m_vMeshColor.z = (sinf(t * 5.0f) + 1.0f) * 0.5f;
+	*/
+
+	// Set vertex color to white (1,1,1) so the texture is not tinted
+	m_vMeshColor.x = 1.0f;
+	m_vMeshColor.y = 1.0f;
+	m_vMeshColor.z = 1.0f;
 
 	// Rotate cube around the origin
 	m_World = XMMatrixRotationY(t);

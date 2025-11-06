@@ -9,8 +9,7 @@ class Texture;
 /*
   @class DepthStencilView
   @brief A depth stencil view encapsulates a depth stencil buffer resource.
-  @note A depth stencil view is used in conjunction with a depth stencil buffer to
-				control access to resource data.
+  @note A depth stencil view is used in conjunction with a depth stencil buffer to control access to resource data.
 */
 class
   DepthStencilView {
