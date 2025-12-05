@@ -90,6 +90,41 @@ BaseApp::init() {
 		return hr;
 	}
 
+	// Load Resources -> Modelos, Texturas e Interfaz de usuario
+
+	// Set Peashooter Actor
+	m_peashooter = EU::MakeShared<Actor>(m_device);
+
+	if (!m_peashooter.isNull()) {
+		// Crear vertex buffer y index buffer para el Peashooter
+		std::vector<MeshComponent> peashooterMeshes;
+		m_model = new Model3D("Models/Peashooter.fbx", ModelType::FBX);
+		peashooterMeshes = m_model->GetMeshes();
+
+		std::vector<Texture> peashooterTextures;
+		hr = m_peashooterAlbedo.init(m_device, "Textures/Peashooter_Texture", ExtensionType::PNG);
+		// Load the Texture
+		if (FAILED(hr)) {
+			ERROR("Main", "InitDevice",
+				("Failed to initialize cyberGunAlbedo. HRESULT: " + std::to_string(hr)).c_str());
+			return hr;
+		}
+		peashooterTextures.push_back(m_peashooterAlbedo);
+
+		m_peashooter->setMesh(m_device, peashooterMeshes);
+		m_peashooter->setTextures(peashooterTextures);
+		m_peashooter->setName("Peashooter");
+		m_actors.push_back(m_peashooter);
+
+		m_peashooter->getComponent<Transform>()->setTransform(EU::Vector3(0.0f, 0.0f, 0.0f),
+			EU::Vector3(0.0f, 1.0f, 0.0f),
+			EU::Vector3(1.0f, 1.0f, 1.0f));
+	}
+	else {
+		ERROR("Main", "InitDevice", "Failed to create Peashooter Actor.");
+		return E_FAIL;
+	}
+
 	// Define the input layout
 	std::vector<D3D11_INPUT_ELEMENT_DESC> Layout;
 	D3D11_INPUT_ELEMENT_DESC position;
@@ -130,40 +165,25 @@ BaseApp::init() {
 		return hr;
 	}
 
-	m_model = new Model3D("Models/Peashooter.fbx", ModelType::FBX);
-	Peashooter = m_model->GetMeshes();
-
-	/*
-	// Load the mesh using ModelLoader
-	bool modelLoaded = m_modelLoader.LoadOBJ("models/Peashooter", m_mesh);
-
-	if (!modelLoaded) {
-		ERROR("Main", "InitDevice",
-			"Failed to load model using ModelLoader.");
-		return E_FAIL;
-	}
-	*/
-
-	// Create vertex buffer
-	hr = m_vertexBuffer.init(m_device, Peashooter[0], D3D11_BIND_VERTEX_BUFFER);
-
-	if (FAILED(hr)) {
-		ERROR("Main", "InitDevice",
-			("Failed to initialize VertexBuffer. HRESULT: " + std::to_string(hr)).c_str());
-		return hr;
-	}
-
-	// Create index buffer
-	hr = m_indexBuffer.init(m_device, Peashooter[0], D3D11_BIND_INDEX_BUFFER);
-
-	if (FAILED(hr)) {
-		ERROR("Main", "InitDevice",
-			("Failed to initialize IndexBuffer. HRESULT: " + std::to_string(hr)).c_str());
-		return hr;
-	}
+	//// Create vertex buffer
+	//hr = m_vertexBuffer.init(m_device, TRex[0], D3D11_BIND_VERTEX_BUFFER);
+	//
+	//if (FAILED(hr)) {
+	//	ERROR("Main", "InitDevice",
+	//		("Failed to initialize VertexBuffer. HRESULT: " + std::to_string(hr)).c_str());
+	//	return hr;
+	//}
+	//
+	//// Create index buffer
+	//hr = m_indexBuffer.init(m_device, TRex[0], D3D11_BIND_INDEX_BUFFER);
+	//
+	//if (FAILED(hr)) {
+	//	ERROR("Main", "InitDevice",
+	//		("Failed to initialize IndexBuffer. HRESULT: " + std::to_string(hr)).c_str());
+	//	return hr;
+	//}
 
 	//auto& resourceMan = ResourceManager::getInstance();
-
 	//std::shared_ptr<Model3D> model = resourceMan.GetOrLoad<Model3D>("CubeModel", "Peashooter.fbx", ModelType::FBX);
 
 	// Create the constant buffers
@@ -181,31 +201,22 @@ BaseApp::init() {
 		return hr;
 	}
 
-	hr = m_cbChangesEveryFrame.init(m_device, sizeof(CBChangesEveryFrame));
-	if (FAILED(hr)) {
-		ERROR("Main", "InitDevice",
-			("Failed to initialize ChangesEveryFrame Buffer. HRESULT: " + std::to_string(hr)).c_str());
-		return hr;
-	}
+	//hr = m_cbChangesEveryFrame.init(m_device, sizeof(CBChangesEveryFrame));
+	//if (FAILED(hr)) {
+	//	ERROR("Main", "InitDevice",
+	//		("Failed to initialize ChangesEveryFrame Buffer. HRESULT: " + std::to_string(hr)).c_str());
+	//	return hr;
+	//}	
 
-	hr = m_textureCube.init(m_device, "Textures/Peashooter_texture", ExtensionType::PNG);
-	// Load the Texture
-	if (FAILED(hr)) {
-		ERROR("Main", "InitDevice",
-			("Failed to initialize texture. HRESULT: " + std::to_string(hr)).c_str());
-		return hr;
-	}
-
-	// Create the sample state
-	hr = m_samplerState.init(m_device);
-	if (FAILED(hr)) {
-		ERROR("Main", "InitDevice",
-			("Failed to initialize SamplerState. HRESULT: " + std::to_string(hr)).c_str());
-		return hr;
-	}
+	//hr = m_samplerState.init(m_device);
+	//if (FAILED(hr)) {
+	//	ERROR("Main", "InitDevice",
+	//		("Failed to initialize SamplerState. HRESULT: " + std::to_string(hr)).c_str());
+	//	return hr;
+	//}
 
 	// Initialize the world matrices
-	m_World = XMMatrixIdentity();
+	//m_World = XMMatrixIdentity();
 
 	// Initialize the view matrix
 	XMVECTOR Eye = XMVectorSet(0.0f, 3.0f, -6.0f, 0.0f);
@@ -238,12 +249,19 @@ void BaseApp::update(float deltaTime)
 			dwTimeStart = dwTimeCur;
 		t = (dwTimeCur - dwTimeStart) / 1000.0f;
 	}
+	//update User Interface
+
 	// Actualizar la matriz de proyección y vista
 	cbNeverChanges.mView = XMMatrixTranspose(m_View);
 	m_cbNeverChanges.update(m_deviceContext, nullptr, 0, nullptr, &cbNeverChanges, 0, 0);
 	m_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV4, m_window.m_width / (FLOAT)m_window.m_height, 0.01f, 100.0f);
 	cbChangesOnResize.mProjection = XMMatrixTranspose(m_Projection);
 	m_cbChangeOnResize.update(m_deviceContext, nullptr, 0, nullptr, &cbChangesOnResize, 0, 0);
+
+	// Update Actors
+	for (auto& actor : m_actors) {
+		actor->update(deltaTime, m_deviceContext);
+	}
 
 	/*
 	// Modify the color
@@ -253,23 +271,23 @@ void BaseApp::update(float deltaTime)
 	*/
 
 	// Set vertex color to white (1,1,1) so the texture is not tinted
-	m_vMeshColor.x = 1.0f;
-	m_vMeshColor.y = 1.0f;
-	m_vMeshColor.z = 1.0f;
+	//m_vMeshColor.x = 1.0f;
+	//m_vMeshColor.y = 1.0f;
+	//m_vMeshColor.z = 1.0f;
 
 	// Rotate cube around the origin
 	// Aplicar escala
-	XMMATRIX scaleMatrix = XMMatrixScaling(1.0f, 1.0f, 1.0f);
+	//XMMATRIX scaleMatrix = XMMatrixScaling(1.0f, 1.0f, 1.0f);
 	// Aplicar rotacion
-	XMMATRIX rotationMatrix = XMMatrixRotationRollPitchYaw(0.0f, 1.0f, 0.0f);
+	//XMMATRIX rotationMatrix = XMMatrixRotationRollPitchYaw(0.0f, 1.0f, 0.0f);
 	// Aplicar traslacion
-	XMMATRIX translationMatrix = XMMatrixTranslation(0.0f, 0.0f, 2.0f);
+	//XMMATRIX translationMatrix = XMMatrixTranslation(0.0f, 0.0f, 2.0f);
 
 	// Componer la matriz final en el orden: scale -> rotation -> translation
-	m_World = scaleMatrix * rotationMatrix * translationMatrix;
-	cb.mWorld = XMMatrixTranspose(m_World);
-	cb.vMeshColor = m_vMeshColor;
-	m_cbChangesEveryFrame.update(m_deviceContext, nullptr, 0, nullptr, &cb, 0, 0);
+	//m_World = scaleMatrix * rotationMatrix * translationMatrix;
+	//cb.mWorld = XMMatrixTranspose(m_World);
+	//cb.vMeshColor = m_vMeshColor;
+	//m_cbChangesEveryFrame.update(m_deviceContext, nullptr, 0, nullptr, &cb, 0, 0);
 }
 
 void
@@ -287,24 +305,30 @@ BaseApp::render() {
 	// Set shader program
 	m_shaderProgram.render(m_deviceContext);
 
-	// Render the cube
-	 // Asignar buffers Vertex e Index
-	m_vertexBuffer.render(m_deviceContext, 0, 1);
-	m_indexBuffer.render(m_deviceContext, 0, 1, false, DXGI_FORMAT_R32_UINT);
-
 	// Asignar buffers constantes
 	m_cbNeverChanges.render(m_deviceContext, 0, 1);
 	m_cbChangeOnResize.render(m_deviceContext, 1, 1);
-	m_cbChangesEveryFrame.render(m_deviceContext, 2, 1);
-	m_cbChangesEveryFrame.render(m_deviceContext, 2, 1, true);
+	
+	// Render all actors
+	for (auto& actor : m_actors) {
+		actor->render(m_deviceContext);
+	}
 
+	// Render UI
+
+	// Render the cube
+	 // Asignar buffers Vertex e Index
+	//m_vertexBuffer.render(m_deviceContext, 0, 1);
+	//m_indexBuffer.render(m_deviceContext, 0, 1, false, DXGI_FORMAT_R32_UINT);
+	//m_cbChangesEveryFrame.render(m_deviceContext, 2, 1);
+	//m_cbChangesEveryFrame.render(m_deviceContext, 2, 1, true);
 	// Asignar textura y sampler
-	m_textureCube.render(m_deviceContext, 0, 1);
-	m_samplerState.render(m_deviceContext, 0, 1);
-	m_deviceContext.DrawIndexed(Peashooter[0].m_numIndex, 0, 0);
+	//m_textureCube.render(m_deviceContext, 0, 1);
+	//m_samplerState.render(m_deviceContext, 0, 1);
+	//m_deviceContext.DrawIndexed(Peashooter[0].m_numIndex, 0, 0);
 
 	// Set primitive topology
-	m_deviceContext.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	//m_deviceContext.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// Present our back buffer to our front buffer
 	m_swapChain.present();
@@ -314,14 +338,14 @@ void
 BaseApp::destroy() {
 	if (m_deviceContext.m_deviceContext) m_deviceContext.m_deviceContext->ClearState();
 
-	m_samplerState.destroy();
-	m_textureCube.destroy();
+	//m_samplerState.destroy();
+	//m_textureCube.destroy();
 
 	m_cbNeverChanges.destroy();
 	m_cbChangeOnResize.destroy();
-	m_cbChangesEveryFrame.destroy();
-	m_vertexBuffer.destroy();
-	m_indexBuffer.destroy();
+	//m_cbChangesEveryFrame.destroy();
+	//m_vertexBuffer.destroy();
+	//m_indexBuffer.destroy();
 	m_shaderProgram.destroy();
 	m_depthStencil.destroy();
 	m_depthStencilView.destroy();

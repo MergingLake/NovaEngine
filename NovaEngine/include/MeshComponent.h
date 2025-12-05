@@ -1,6 +1,6 @@
 #pragma once
 #include "Prerequisites.h"
-//#include "ECS\Component.h"
+#include "ECS\Component.h"
 // Forward declaration
 class DeviceContext;
  
@@ -10,12 +10,12 @@ class DeviceContext;
 	@note The MeshComponent class stores vertex and index data for rendering 3D models.
 */
 class
-  MeshComponent /*: public Component*/ {
+  MeshComponent : public Component {
 public:
   /*
 		@brief Default constructor
   */
-  MeshComponent() : m_numVertex(0), m_numIndex(0)/*, Component(ComponentType::MESH)*/ {}
+  MeshComponent() : m_numVertex(0), m_numIndex(0), Component(ComponentType::MESH) {}
 
   /*
     @brief Destructor
@@ -27,25 +27,25 @@ public:
 		@brief Initializes the mesh component.
   */
   void
-    init() /*override {}*/;
+    init() override {};
 
   /*
     @brief Updates the mesh component.
   */
   void
-    update(float deltaTime)/* override {}*/;
+    update(float deltaTime) override {};
 
   /*
     @brief Renders the mesh component.
   */
   void
-    render(DeviceContext& deviceContext) /*override {}*/;
+    render(DeviceContext& deviceContext) override {};
 
   /*
 		@brief Destroys the mesh component and releases associated resources.
   */
   void
-    destroy() /*override {}*/;
+    destroy() override {};
 
 public:
   /*

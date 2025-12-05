@@ -13,6 +13,7 @@
 #include "Buffer.h"
 #include "SamplerState.h"
 #include "Model3D.h"
+#include "ECS/Actor.h"
 
 /*
 	@class BaseApp
@@ -92,25 +93,27 @@ private:
 	DepthStencilView									  m_depthStencilView;
 	Viewport                            m_viewport;
 	ShaderProgram												m_shaderProgram;
-	MeshComponent												m_mesh;
-	Buffer															m_vertexBuffer;
-	Buffer															m_indexBuffer;
+	//MeshComponent												m_mesh;
+	//Buffer															m_vertexBuffer;
+	//Buffer															m_indexBuffer;
 	//ModelLoader													m_modelLoader;
 	Buffer															m_cbNeverChanges;
 	Buffer															m_cbChangeOnResize;
-	Buffer															m_cbChangesEveryFrame;
-	Texture 														m_textureCube;
-	SamplerState												m_samplerState;
+	//Buffer															m_cbChangesEveryFrame;
+	Texture 														m_peashooterAlbedo;
+	//SamplerState												m_samplerState;
 
-	XMMATRIX                            m_World;
+	//XMMATRIX                            m_World;
 	XMMATRIX                            m_View;
 	XMMATRIX                            m_Projection;
-	XMFLOAT4                            m_vMeshColor;// (0.7f, 0.7f, 0.7f, 1.0f);
+	//XMFLOAT4                            m_vMeshColor;// (0.7f, 0.7f, 0.7f, 1.0f);
 
-	std::vector<MeshComponent> Peashooter;
-	Model3D*														m_model;
+	std::vector<EU::TSharedPointer<Actor>> m_actors;
+	EU::TSharedPointer<Actor> m_peashooter;
+
+	Model3D*                               m_model;
 
 	CBChangeOnResize										cbChangesOnResize;
 	CBNeverChanges											cbNeverChanges;
-	CBChangesEveryFrame									cb;
+	//CBChangesEveryFrame									cb;
 };

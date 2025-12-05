@@ -21,6 +21,21 @@
     <Filter Include="include\Patterns">
       <UniqueIdentifier>{7b6d3ace-2c68-4f63-9ca1-f8366f67bf2f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="include\ECS">
+      <UniqueIdentifier>{7d0ed078-52f3-4f64-b80e-f9a372eff0cc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\Utilities">
+      <UniqueIdentifier>{9162f23f-9e6f-45d7-9f03-e74eedc9fc39}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\Utilities\Memory">
+      <UniqueIdentifier>{319f4e53-9a40-48ac-b3f2-5698ea312309}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\ECS">
+      <UniqueIdentifier>{994ff328-5196-4377-9649-bf464f5a8ac3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\Utilities\Vector">
+      <UniqueIdentifier>{ba420022-3e0d-4132-a5d6-e1bb22a1b77e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="NovaEngine.cpp">
@@ -71,6 +86,9 @@
     <ClCompile Include="include\Model3D.cpp">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="source\ECS\Actor.cpp">
+      <Filter>source\ECS</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="NovaEngine.fx">
@@ -85,9 +103,6 @@
       <Filter>Resource Files</Filter>
     </ResourceCompile>
     <ClInclude Include="include\Window.h">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="include\Prerequisites.h">
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="include\Device.h">
@@ -120,9 +135,6 @@
     <ClInclude Include="include\Buffer.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="include\MeshComponent.h">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="include\BaseApp.h">
       <Filter>include</Filter>
     </ClInclude>
@@ -132,14 +144,56 @@
     <ClInclude Include="include\ModelLoader.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="include\stb_image.h">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="include\IResource.h">
       <Filter>include\Patterns</Filter>
     </ClInclude>
+    <ClInclude Include="include\ECS\Component.h">
+      <Filter>include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ECS\Entity.h">
+      <Filter>include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="include\MeshComponent.h">
+      <Filter>include\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="include\stb_image.h">
+      <Filter>include\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Prerequisites.h">
+      <Filter>include\Utilities</Filter>
+    </ClInclude>
     <ClInclude Include="include\Model3D.h">
-      <Filter>include</Filter>
+      <Filter>include\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="include\EngineUtilities\Memory\TSharedPointer.h">
+      <Filter>include\Utilities\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="include\EngineUtilities\Memory\TStaticPtr.h">
+      <Filter>include\Utilities\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="include\EngineUtilities\Memory\TUniquePtr.h">
+      <Filter>include\Utilities\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="include\EngineUtilities\Memory\TWeakPointer.h">
+      <Filter>include\Utilities\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ECS\Actor.h">
+      <Filter>include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ECS\Transform.h">
+      <Filter>include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="include\EngineUtilities\Vectors\Vector2.h">
+      <Filter>include\Utilities\Vector</Filter>
+    </ClInclude>
+    <ClInclude Include="include\EngineUtilities\Vectors\Vector3.h">
+      <Filter>include\Utilities\Vector</Filter>
+    </ClInclude>
+    <ClInclude Include="include\EngineUtilities\Vectors\Vector4.h">
+      <Filter>include\Utilities\Vector</Filter>
+    </ClInclude>
+    <ClInclude Include="include\EngineUtilities\Utilities\EngineMath.h">
+      <Filter>include\Utilities</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
