@@ -1,9 +1,5 @@
 #include "BaseApp.h"
 
-BaseApp::BaseApp(HINSTANCE hInst, int nCmdShow)
-{
-}
-
 int
 BaseApp::run(HINSTANCE hInst, int nCmdShow) {
 	if (FAILED(m_window.init(hInst, nCmdShow, WndProc))) {
@@ -189,7 +185,7 @@ BaseApp::init() {
 		return hr;
 	}
 
-	hr = m_textureCube.init(m_device, "Textures/Peashooter_texture", ExtensionType::DDS);
+	hr = m_textureCube.init(m_device, "Textures/Peashooter_texture", ExtensionType::PNG);
 	// Load the Texture
 	if (FAILED(hr)) {
 		ERROR("Main", "InitDevice",

@@ -27,7 +27,7 @@ public:
 		@param hInst The instance handle of the application.
 		@param nCmdShow The command show parameter that specifies how the window is to be shown.
 	*/
-	BaseApp(HINSTANCE hInst, int nCmdShow);
+	BaseApp() = default;
 	
 	/* 
 		@brief Destructor
