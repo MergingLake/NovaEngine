@@ -423,6 +423,7 @@
   </ItemDefinitionGroup>
   <ItemGroup />
   <ItemGroup>
+    <ClCompile Include="include\Model3D.cpp" />
     <ClCompile Include="NovaEngine.cpp" />
     <ClCompile Include="source\BaseApp.cpp" />
     <ClCompile Include="source\Buffer.cpp" />
@@ -449,7 +450,9 @@
     <ClInclude Include="include\Device.h" />
     <ClInclude Include="include\DeviceContext.h" />
     <ClInclude Include="include\InputLayout.h" />
+    <ClInclude Include="include\IResource.h" />
     <ClInclude Include="include\MeshComponent.h" />
+    <ClInclude Include="include\Model3D.h" />
     <ClInclude Include="include\ModelLoader.h" />
     <ClInclude Include="include\Prerequisites.h" />
     <ClInclude Include="include\RenderTargetView.h" />

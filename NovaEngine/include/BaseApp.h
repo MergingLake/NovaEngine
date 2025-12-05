@@ -12,7 +12,7 @@
 #include "MeshComponent.h"
 #include "Buffer.h"
 #include "SamplerState.h"
-#include "ModelLoader.h"
+#include "Model3D.h"
 
 /*
 	@class BaseApp
@@ -95,7 +95,7 @@ private:
 	MeshComponent												m_mesh;
 	Buffer															m_vertexBuffer;
 	Buffer															m_indexBuffer;
-	ModelLoader													m_modelLoader;
+	//ModelLoader													m_modelLoader;
 	Buffer															m_cbNeverChanges;
 	Buffer															m_cbChangeOnResize;
 	Buffer															m_cbChangesEveryFrame;
@@ -106,6 +106,9 @@ private:
 	XMMATRIX                            m_View;
 	XMMATRIX                            m_Projection;
 	XMFLOAT4                            m_vMeshColor;// (0.7f, 0.7f, 0.7f, 1.0f);
+
+	std::vector<MeshComponent> Peashooter;
+	Model3D*														m_model;
 
 	CBChangeOnResize										cbChangesOnResize;
 	CBNeverChanges											cbNeverChanges;

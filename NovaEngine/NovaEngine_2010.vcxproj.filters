@@ -18,6 +18,9 @@
     <Filter Include="source">
       <UniqueIdentifier>{583917f0-d792-451b-8641-5289bf7cb146}</UniqueIdentifier>
     </Filter>
+    <Filter Include="include\Patterns">
+      <UniqueIdentifier>{7b6d3ace-2c68-4f63-9ca1-f8366f67bf2f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="NovaEngine.cpp">
@@ -63,6 +66,9 @@
       <Filter>source</Filter>
     </ClCompile>
     <ClCompile Include="source\ModelLoader.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="include\Model3D.cpp">
       <Filter>source</Filter>
     </ClCompile>
   </ItemGroup>
@@ -127,6 +133,12 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="include\stb_image.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\IResource.h">
+      <Filter>include\Patterns</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Model3D.h">
       <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>

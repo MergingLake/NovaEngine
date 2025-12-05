@@ -90,9 +90,6 @@ BaseApp::init() {
 		return hr;
 	}
 
-	// Load Resources
-
-
 	// Define the input layout
 	std::vector<D3D11_INPUT_ELEMENT_DESC> Layout;
 	D3D11_INPUT_ELEMENT_DESC position;
@@ -133,6 +130,10 @@ BaseApp::init() {
 		return hr;
 	}
 
+	m_model = new Model3D("Models/Peashooter.fbx", ModelType::FBX);
+	Peashooter = m_model->GetMeshes();
+
+	/*
 	// Load the mesh using ModelLoader
 	bool modelLoaded = m_modelLoader.LoadOBJ("models/Peashooter", m_mesh);
 
@@ -141,9 +142,10 @@ BaseApp::init() {
 			"Failed to load model using ModelLoader.");
 		return E_FAIL;
 	}
+	*/
 
 	// Create vertex buffer
-	hr = m_vertexBuffer.init(m_device, m_mesh, D3D11_BIND_VERTEX_BUFFER);
+	hr = m_vertexBuffer.init(m_device, Peashooter[0], D3D11_BIND_VERTEX_BUFFER);
 
 	if (FAILED(hr)) {
 		ERROR("Main", "InitDevice",
@@ -152,13 +154,17 @@ BaseApp::init() {
 	}
 
 	// Create index buffer
-	hr = m_indexBuffer.init(m_device, m_mesh, D3D11_BIND_INDEX_BUFFER);
+	hr = m_indexBuffer.init(m_device, Peashooter[0], D3D11_BIND_INDEX_BUFFER);
 
 	if (FAILED(hr)) {
 		ERROR("Main", "InitDevice",
 			("Failed to initialize IndexBuffer. HRESULT: " + std::to_string(hr)).c_str());
 		return hr;
 	}
+
+	//auto& resourceMan = ResourceManager::getInstance();
+
+	//std::shared_ptr<Model3D> model = resourceMan.GetOrLoad<Model3D>("CubeModel", "Peashooter.fbx", ModelType::FBX);
 
 	// Set primitive topology
 	m_deviceContext.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -189,7 +195,7 @@ BaseApp::init() {
 	// Load the Texture
 	if (FAILED(hr)) {
 		ERROR("Main", "InitDevice",
-			("Failed to initialize texture Cube. HRESULT: " + std::to_string(hr)).c_str());
+			("Failed to initialize texture. HRESULT: " + std::to_string(hr)).c_str());
 		return hr;
 	}
 
@@ -255,7 +261,15 @@ void BaseApp::update(float deltaTime)
 	m_vMeshColor.z = 1.0f;
 
 	// Rotate cube around the origin
-	m_World = XMMatrixRotationY(t);
+	// Aplicar escala
+	XMMATRIX scaleMatrix = XMMatrixScaling(1.0f, 1.0f, 1.0f);
+	// Aplicar rotacion
+	XMMATRIX rotationMatrix = XMMatrixRotationRollPitchYaw(0.0f, 1.0f, 0.0f);
+	// Aplicar traslacion
+	XMMATRIX translationMatrix = XMMatrixTranslation(0.0f, 0.0f, 2.0f);
+
+	// Componer la matriz final en el orden: scale -> rotation -> translation
+	m_World = scaleMatrix * rotationMatrix * translationMatrix;
 	cb.mWorld = XMMatrixTranspose(m_World);
 	cb.vMeshColor = m_vMeshColor;
 	m_cbChangesEveryFrame.update(m_deviceContext, nullptr, 0, nullptr, &cb, 0, 0);
@@ -290,7 +304,7 @@ BaseApp::render() {
 	// Asignar textura y sampler
 	m_textureCube.render(m_deviceContext, 0, 1);
 	m_samplerState.render(m_deviceContext, 0, 1);
-	m_deviceContext.DrawIndexed(m_mesh.m_numIndex, 0, 0);
+	m_deviceContext.DrawIndexed(Peashooter[0].m_numIndex, 0, 0);
 
 	// Present our back buffer to our front buffer
 	m_swapChain.present();
