@@ -1,5 +1,8 @@
 #include "BaseApp.h"
 
+extern IMGUI_IMPL_API 
+LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 int
 BaseApp::run(HINSTANCE hInst, int nCmdShow) {
 	if (FAILED(m_window.init(hInst, nCmdShow, WndProc))) {
@@ -116,7 +119,7 @@ BaseApp::init() {
 		m_peashooter->setName("Peashooter");
 		m_actors.push_back(m_peashooter);
 
-		m_peashooter->getComponent<Transform>()->setTransform(EU::Vector3(0.0f, 0.0f, 0.0f),
+		m_peashooter->getComponent<Transform>()->setTransform(EU::Vector3(1.0f, 0.5f, 0.0f),
 			EU::Vector3(0.0f, 1.0f, 0.0f),
 			EU::Vector3(1.0f, 1.0f, 1.0f));
 	}
@@ -230,6 +233,8 @@ BaseApp::init() {
 	m_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV4, m_window.m_width / (FLOAT)m_window.m_height, 0.01f, 100.0f);
 	cbChangesOnResize.mProjection = XMMatrixTranspose(m_Projection);
 
+	m_imguiInterface.init(m_window.getHwnd(), m_device.m_device, m_deviceContext.m_deviceContext);
+
 	return S_OK;
 }
 
@@ -288,6 +293,8 @@ void BaseApp::update(float deltaTime)
 	//cb.mWorld = XMMatrixTranspose(m_World);
 	//cb.vMeshColor = m_vMeshColor;
 	//m_cbChangesEveryFrame.update(m_deviceContext, nullptr, 0, nullptr, &cb, 0, 0);
+
+	m_imguiInterface.update(this);
 }
 
 void
@@ -331,6 +338,8 @@ BaseApp::render() {
 	//m_deviceContext.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// Present our back buffer to our front buffer
+
+	m_imguiInterface.render();
 	m_swapChain.present();
 }
 
@@ -354,12 +363,14 @@ BaseApp::destroy() {
 	m_backBuffer.destroy();
 	m_deviceContext.destroy();
 	m_device.destroy();
+	m_imguiInterface.destroy();
 }
 
 LRESULT
 BaseApp::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-	//if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
-	//  return true;
+	if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
+			return true;
+
 	switch (message)
 	{
 	case WM_CREATE:

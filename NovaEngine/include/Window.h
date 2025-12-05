@@ -50,6 +50,9 @@ public:
 	void
 	destroy();
 
+	HWND
+		getHwnd() { return m_hWnd; }
+
 public:
 	HWND m_hWnd = nullptr;
 	unsigned int m_width;

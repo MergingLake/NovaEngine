@@ -87,6 +87,7 @@ public:
 	*/
   void
     destroy();
+
 private:
   ID3D11RenderTargetView* m_renderTargetView = nullptr;
 };

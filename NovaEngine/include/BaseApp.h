@@ -14,6 +14,7 @@
 #include "SamplerState.h"
 #include "Model3D.h"
 #include "ECS/Actor.h"
+#include "ImguiInterface.h"
 
 /*
 	@class BaseApp
@@ -29,6 +30,8 @@ public:
 		@param nCmdShow The command show parameter that specifies how the window is to be shown.
 	*/
 	BaseApp() = default;
+
+	friend class ImguiInterface;
 	
 	/* 
 		@brief Destructor
@@ -102,6 +105,7 @@ private:
 	//Buffer															m_cbChangesEveryFrame;
 	Texture 														m_peashooterAlbedo;
 	//SamplerState												m_samplerState;
+	ImguiInterface                     m_imguiInterface;
 
 	//XMMATRIX                            m_World;
 	XMMATRIX                            m_View;
