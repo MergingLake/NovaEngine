@@ -1,4 +1,6 @@
 #pragma once
+#include "Prerequisites.h"
+#include "fbxsdk.h"
 #include "MeshComponent.h"
 #include <string>
 #include <fstream>
@@ -33,4 +35,12 @@ public:
   */
   bool
     LoadOBJ(const std::string& filename, MeshComponent& outMesh);
+
+private:
+  FbxManager* lSdkManager;
+	FbxScene* lScene;
+  std::vector<std::string> textureFileNames;
+public:
+  std::string modelName;
+	//std::vector<MeshComponent> meshes;
 };
