@@ -41,7 +41,10 @@ public:
    * @brief Destructor virtual por defecto.
    */
   virtual
-    ~Actor() = default;
+  ~Actor() = default;
+
+  void 
+  awake() override {}
 
   /**
    * @brief Inicializa el actor.
@@ -50,7 +53,7 @@ public:
    * Puede usarse para inicializar recursos adicionales en clases derivadas.
    */
   void
-    init() override {}
+  init() override {}
 
   /**
    * @brief Actualiza el actor en cada frame.

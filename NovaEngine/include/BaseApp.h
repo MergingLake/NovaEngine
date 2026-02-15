@@ -35,6 +35,9 @@ public:
 	*/
 	~BaseApp() { destroy(); }
 
+	HRESULT
+		awake();
+
 	/*
 		@brief Runs the application.
 		@param hInst The instance handle of the application.

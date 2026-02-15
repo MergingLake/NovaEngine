@@ -1,12 +1,27 @@
 #include "BaseApp.h"
 
+HRESULT
+BaseApp::awake() {
+	HRESULT hr = S_OK;
+
+	MESSAGE("Main", "Awake", "Aplication awake successfully.");
+	return hr;
+}
+
 int
 BaseApp::run(HINSTANCE hInst, int nCmdShow) {
 	if (FAILED(m_window.init(hInst, nCmdShow, WndProc))) {
+		ERROR("Main", "Run", "Failed to initialize window.");
 		return 0;
 	}
-	if (FAILED(init()))
+	if (FAILED(awake())) {
+		ERROR("Main", "Run", "Failed to awake application.");
 		return 0;
+	}
+	if (FAILED(init())) {
+		ERROR("Main", "Run", "Failed to initialize device and device context.");
+		return 0;
+	}
 	// Main message loop
 	MSG msg = {};
 	LARGE_INTEGER freq, prev;
@@ -165,27 +180,6 @@ BaseApp::init() {
 		return hr;
 	}
 
-	//// Create vertex buffer
-	//hr = m_vertexBuffer.init(m_device, TRex[0], D3D11_BIND_VERTEX_BUFFER);
-	//
-	//if (FAILED(hr)) {
-	//	ERROR("Main", "InitDevice",
-	//		("Failed to initialize VertexBuffer. HRESULT: " + std::to_string(hr)).c_str());
-	//	return hr;
-	//}
-	//
-	//// Create index buffer
-	//hr = m_indexBuffer.init(m_device, TRex[0], D3D11_BIND_INDEX_BUFFER);
-	//
-	//if (FAILED(hr)) {
-	//	ERROR("Main", "InitDevice",
-	//		("Failed to initialize IndexBuffer. HRESULT: " + std::to_string(hr)).c_str());
-	//	return hr;
-	//}
-
-	//auto& resourceMan = ResourceManager::getInstance();
-	//std::shared_ptr<Model3D> model = resourceMan.GetOrLoad<Model3D>("CubeModel", "Peashooter.fbx", ModelType::FBX);
-
 	// Create the constant buffers
 	hr = m_cbNeverChanges.init(m_device, sizeof(CBNeverChanges));
 	if (FAILED(hr)) {
@@ -200,23 +194,6 @@ BaseApp::init() {
 			("Failed to initialize ChangeOnResize Buffer. HRESULT: " + std::to_string(hr)).c_str());
 		return hr;
 	}
-
-	//hr = m_cbChangesEveryFrame.init(m_device, sizeof(CBChangesEveryFrame));
-	//if (FAILED(hr)) {
-	//	ERROR("Main", "InitDevice",
-	//		("Failed to initialize ChangesEveryFrame Buffer. HRESULT: " + std::to_string(hr)).c_str());
-	//	return hr;
-	//}	
-
-	//hr = m_samplerState.init(m_device);
-	//if (FAILED(hr)) {
-	//	ERROR("Main", "InitDevice",
-	//		("Failed to initialize SamplerState. HRESULT: " + std::to_string(hr)).c_str());
-	//	return hr;
-	//}
-
-	// Initialize the world matrices
-	//m_World = XMMatrixIdentity();
 
 	// Initialize the view matrix
 	XMVECTOR Eye = XMVectorSet(0.0f, 3.0f, -6.0f, 0.0f);
@@ -262,32 +239,6 @@ void BaseApp::update(float deltaTime)
 	for (auto& actor : m_actors) {
 		actor->update(deltaTime, m_deviceContext);
 	}
-
-	/*
-	// Modify the color
-	m_vMeshColor.x = (sinf(t * 1.0f) + 1.0f) * 0.5f;
-	m_vMeshColor.y = (cosf(t * 3.0f) + 1.0f) * 0.5f;
-	m_vMeshColor.z = (sinf(t * 5.0f) + 1.0f) * 0.5f;
-	*/
-
-	// Set vertex color to white (1,1,1) so the texture is not tinted
-	//m_vMeshColor.x = 1.0f;
-	//m_vMeshColor.y = 1.0f;
-	//m_vMeshColor.z = 1.0f;
-
-	// Rotate cube around the origin
-	// Aplicar escala
-	//XMMATRIX scaleMatrix = XMMatrixScaling(1.0f, 1.0f, 1.0f);
-	// Aplicar rotacion
-	//XMMATRIX rotationMatrix = XMMatrixRotationRollPitchYaw(0.0f, 1.0f, 0.0f);
-	// Aplicar traslacion
-	//XMMATRIX translationMatrix = XMMatrixTranslation(0.0f, 0.0f, 2.0f);
-
-	// Componer la matriz final en el orden: scale -> rotation -> translation
-	//m_World = scaleMatrix * rotationMatrix * translationMatrix;
-	//cb.mWorld = XMMatrixTranspose(m_World);
-	//cb.vMeshColor = m_vMeshColor;
-	//m_cbChangesEveryFrame.update(m_deviceContext, nullptr, 0, nullptr, &cb, 0, 0);
 }
 
 void
@@ -316,20 +267,6 @@ BaseApp::render() {
 
 	// Render UI
 
-	// Render the cube
-	 // Asignar buffers Vertex e Index
-	//m_vertexBuffer.render(m_deviceContext, 0, 1);
-	//m_indexBuffer.render(m_deviceContext, 0, 1, false, DXGI_FORMAT_R32_UINT);
-	//m_cbChangesEveryFrame.render(m_deviceContext, 2, 1);
-	//m_cbChangesEveryFrame.render(m_deviceContext, 2, 1, true);
-	// Asignar textura y sampler
-	//m_textureCube.render(m_deviceContext, 0, 1);
-	//m_samplerState.render(m_deviceContext, 0, 1);
-	//m_deviceContext.DrawIndexed(Peashooter[0].m_numIndex, 0, 0);
-
-	// Set primitive topology
-	//m_deviceContext.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
 	// Present our back buffer to our front buffer
 	m_swapChain.present();
 }
@@ -338,14 +275,8 @@ void
 BaseApp::destroy() {
 	if (m_deviceContext.m_deviceContext) m_deviceContext.m_deviceContext->ClearState();
 
-	//m_samplerState.destroy();
-	//m_textureCube.destroy();
-
 	m_cbNeverChanges.destroy();
 	m_cbChangeOnResize.destroy();
-	//m_cbChangesEveryFrame.destroy();
-	//m_vertexBuffer.destroy();
-	//m_indexBuffer.destroy();
 	m_shaderProgram.destroy();
 	m_depthStencil.destroy();
 	m_depthStencilView.destroy();
