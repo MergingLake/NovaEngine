@@ -14,6 +14,10 @@
 #include "SamplerState.h"
 #include "Model3D.h"
 #include "ECS/Actor.h"
+#include "EngineUtilities\GUI\UserInterface.h"
+
+extern IMGUI_IMPL_API
+LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 /*
 	@class BaseApp
@@ -119,4 +123,6 @@ private:
 	CBChangeOnResize										cbChangesOnResize;
 	CBNeverChanges											cbNeverChanges;
 	//CBChangesEveryFrame									cb;
+
+	GUI																					m_gui;
 };

@@ -22,6 +22,9 @@ BaseApp::run(HINSTANCE hInst, int nCmdShow) {
 		ERROR("Main", "Run", "Failed to initialize device and device context.");
 		return 0;
 	}
+
+	m_gui.init(m_window, m_device, m_deviceContext);
+
 	// Main message loop
 	MSG msg = {};
 	LARGE_INTEGER freq, prev;
@@ -227,6 +230,11 @@ void BaseApp::update(float deltaTime)
 		t = (dwTimeCur - dwTimeStart) / 1000.0f;
 	}
 	//update User Interface
+	m_gui.update(m_window);
+	bool show_demo_window = true;
+	//ImGui::ShowDemoWindow(&show_demo_window);
+	m_gui.inspectorGeneral(m_actors[m_gui.selectedActorIndex]);
+	m_gui.outliner(m_actors);
 
 	// Actualizar la matriz de proyección y vista
 	cbNeverChanges.mView = XMMatrixTranspose(m_View);
@@ -239,6 +247,7 @@ void BaseApp::update(float deltaTime)
 	for (auto& actor : m_actors) {
 		actor->update(deltaTime, m_deviceContext);
 	}
+	m_gui.editTransform(m_View, m_Projection, m_actors[m_gui.selectedActorIndex]);
 }
 
 void
@@ -266,6 +275,7 @@ BaseApp::render() {
 	}
 
 	// Render UI
+	m_gui.render();
 
 	// Present our back buffer to our front buffer
 	m_swapChain.present();
@@ -283,14 +293,17 @@ BaseApp::destroy() {
 	m_renderTargetView.destroy();
 	m_swapChain.destroy();
 	m_backBuffer.destroy();
+	m_gui.destroy();
 	m_deviceContext.destroy();
 	m_device.destroy();
 }
 
 LRESULT
 BaseApp::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-	//if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
-	//  return true;
+	if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam)) {
+		return true;
+	}
+
 	switch (message)
 	{
 	case WM_CREATE:

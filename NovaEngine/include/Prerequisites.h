@@ -25,6 +25,11 @@
 #include "EngineUtilities\Memory\TStaticPtr.h"
 #include "EngineUtilities\Memory\TUniquePtr.h"
 
+#include "imgui.h"
+#include <imgui_internal.h>
+#include "imgui_impl_win32.h"
+#include "imgui_impl_dx11.h"
+
 // MACROS
 #define SAFE_RELEASE(x) if(x != nullptr) x->Release(); x = nullptr;
 
