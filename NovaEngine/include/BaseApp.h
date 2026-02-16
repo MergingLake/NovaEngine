@@ -100,20 +100,12 @@ private:
 	DepthStencilView									  m_depthStencilView;
 	Viewport                            m_viewport;
 	ShaderProgram												m_shaderProgram;
-	//MeshComponent												m_mesh;
-	//Buffer															m_vertexBuffer;
-	//Buffer															m_indexBuffer;
-	//ModelLoader													m_modelLoader;
 	Buffer															m_cbNeverChanges;
 	Buffer															m_cbChangeOnResize;
-	//Buffer															m_cbChangesEveryFrame;
 	Texture 														m_peashooterAlbedo;
-	//SamplerState												m_samplerState;
 
-	//XMMATRIX                            m_World;
 	XMMATRIX                            m_View;
 	XMMATRIX                            m_Projection;
-	//XMFLOAT4                            m_vMeshColor;// (0.7f, 0.7f, 0.7f, 1.0f);
 
 	std::vector<EU::TSharedPointer<Actor>> m_actors;
 	EU::TSharedPointer<Actor> m_peashooter;
@@ -122,7 +114,6 @@ private:
 
 	CBChangeOnResize										cbChangesOnResize;
 	CBNeverChanges											cbNeverChanges;
-	//CBChangesEveryFrame									cb;
 
 	GUI																					m_gui;
 };

@@ -2,6 +2,7 @@
 #include "Prerequisites.h"
 #include "ImGuizmo.h"
 
+class Viewport;
 class Window;
 class Device;
 class DeviceContext;
@@ -19,7 +20,7 @@ public:
     init(Window& window, Device& device, DeviceContext& deviceContext);
 
   void
-    update(Window& window);
+    update(Viewport& viewport, Window& window);
 
   void
     render();
@@ -60,6 +61,13 @@ public:
 
   void
     drawGizmoToolbar();
+
+  void ToFloatArray(const XMMATRIX& mat, float* dest) {
+    XMFLOAT4X4 temp;
+    XMStoreFloat4x4(&temp, mat);
+    memcpy(dest, &temp, sizeof(float) * 16);
+  }
+
 private:
   bool checkboxValue = true;
   bool checkboxValue2 = false;

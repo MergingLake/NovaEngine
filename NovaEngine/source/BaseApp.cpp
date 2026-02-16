@@ -230,7 +230,7 @@ void BaseApp::update(float deltaTime)
 		t = (dwTimeCur - dwTimeStart) / 1000.0f;
 	}
 	//update User Interface
-	m_gui.update(m_window);
+	m_gui.update(m_viewport, m_window);
 	bool show_demo_window = true;
 	//ImGui::ShowDemoWindow(&show_demo_window);
 	m_gui.inspectorGeneral(m_actors[m_gui.selectedActorIndex]);

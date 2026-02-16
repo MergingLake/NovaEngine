@@ -1,4 +1,5 @@
 #include "EngineUtilities\GUI\UserInterface.h"
+#include "Viewport.h"
 #include "Window.h"
 #include "Device.h"
 #include "DeviceContext.h"
@@ -38,16 +39,16 @@ GUI::init(Window& window, Device& device, DeviceContext& deviceContext) {
 }
 
 void
-GUI::update(Window& window) {
+GUI::update(Viewport& viewport, Window& window) {
 	// Start the Dear ImGui frame
 	ImGui_ImplDX11_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 
 	ImGuizmo::BeginFrame();
-	ImGuizmo::SetOrthographic(false);
 	ImGuiIO& io = ImGui::GetIO();
-	ImGuizmo::SetRect(0, 0, window.m_width, window.m_height);
+	ImGuizmo::SetOrthographic(false);
+	ImGuizmo::SetRect(0, 0, (float)window.m_width, (float)window.m_height);
 
 	// In Program always
 	ToolBar();
@@ -431,14 +432,13 @@ GUI::editTransform(const XMMATRIX& view, const XMMATRIX& projection, EU::TShared
 	ImGuizmo::RecomposeMatrixFromComponents(pos, rot, sca, mArr);
 
 	float vArr[16], pArr[16];
-	XMStoreFloat4x4((XMFLOAT4X4*)vArr, view);
-	XMStoreFloat4x4((XMFLOAT4X4*)pArr, projection);
-
-	ImGuiIO& io = ImGui::GetIO();
-	ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
+	ToFloatArray(view, vArr);
+	ToFloatArray(projection, pArr);
 
 	ImGuizmo::SetID(0);
 	ImGuizmo::SetGizmoSizeClipSpace(0.15f);
+	ImGuizmo::AllowAxisFlip(false);
+
 	float snapValue = 25.0f;
 	if (mCurrentGizmoOperation == ImGuizmo::ROTATE) snapValue = 5.0f;
 	if (mCurrentGizmoOperation == ImGuizmo::TRANSLATE) snapValue = 0.5f;
