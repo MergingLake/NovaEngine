@@ -447,14 +447,14 @@ GUI::editTransform(const XMMATRIX& view, const XMMATRIX& projection, EU::TShared
 
 	bool useSnap = ImGui::GetIO().KeyCtrl;
 
-	ImGuizmo::Manipulate(
-		vArr, pArr,
-		mCurrentGizmoOperation,
-		mCurrentGizmoMode,
-		mArr,
-		NULL,
-		useSnap ? snap : NULL
-	);
+	//ImGuizmo::Manipulate(
+		//vArr, pArr,
+		//mCurrentGizmoOperation,
+		//mCurrentGizmoMode,
+		//mArr,
+		//NULL,
+		//useSnap ? snap : NULL
+	//);
 
 	ImGuizmo::Manipulate(vArr, pArr, mCurrentGizmoOperation, mCurrentGizmoMode, mArr);
 
