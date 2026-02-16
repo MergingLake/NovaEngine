@@ -16,6 +16,7 @@
 #include "ECS/Actor.h"
 #include "EngineUtilities\GUI\UserInterface.h"
 #include "SceneGraph\SceneGraph.h"
+#include "EngineUtilities/Utilities/Camera.h"
 
 extern IMGUI_IMPL_API
 LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -106,8 +107,9 @@ private:
 	Texture 														m_peashooterAlbedo;
 	Texture 														m_skyboxTex;
 
-	XMMATRIX                            m_View;
-	XMMATRIX                            m_Projection;
+	Camera															m_camera;
+	//XMMATRIX                            m_View;
+	//XMMATRIX                            m_Projection;
 
 	SceneGraph														m_sceneGraph;
 	std::vector<EU::TSharedPointer<Actor>> m_actors;
