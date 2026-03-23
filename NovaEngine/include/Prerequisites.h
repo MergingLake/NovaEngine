@@ -73,6 +73,11 @@ struct CBNeverChanges
   XMMATRIX mView;
 };
 
+struct CBSkybox
+{
+  XMMATRIX mviewProj;
+};
+
 struct CBChangeOnResize
 {
   XMMATRIX mProjection;

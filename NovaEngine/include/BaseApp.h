@@ -122,4 +122,6 @@ private:
 	GUI																					m_gui;
 
 	Skybox m_skybox;
+	RasterizerState m_defaultRasterizer;
+	DepthStencilState m_defaultDepthStencil;
 };

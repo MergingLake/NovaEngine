@@ -32,7 +32,7 @@ Skybox::init(Device& device, DeviceContext* deviceContext, Texture& cubemap) {
 		skybox = m_cubeModel->GetMeshes();
 
 		m_skybox->setMesh(device, skybox);
-		m_skybox->setName("Peashooter");
+		m_skybox->setName("Skybox");
 	}
 	else {
 		ERROR("Skybox", "Init", "Failed to create Skybox Actor.");
@@ -72,13 +72,15 @@ Skybox::init(Device& device, DeviceContext* deviceContext, Texture& cubemap) {
 	}
 
 	// Init Rasterizer
-	hr = m_rasterizerState.init(device, D3D11_FILL_SOLID, D3D11_CULL_FRONT);
+	hr = m_rasterizerState.init(device, D3D11_FILL_SOLID, D3D11_CULL_FRONT, false, true);
 	if (FAILED(hr)) {
 		ERROR("Skybox", "init", "Failed to create new RasterizerState");
 	}
 
 	// Init DepthStencilState
-	hr = m_depthStencilState.init(device, true, false);
+	hr = m_depthStencilState.init(device, true,
+		D3D11_DEPTH_WRITE_MASK_ZERO,
+		D3D11_COMPARISON_LESS_EQUAL);
 	if (FAILED(hr)) {
 		ERROR("Skybox", "init", "Failed to create new DepthStencilState");
 	}
@@ -89,33 +91,35 @@ Skybox::init(Device& device, DeviceContext* deviceContext, Texture& cubemap) {
 
 void
 Skybox::render(DeviceContext& deviceContext, Camera& camera) {
-	// Set rasterizer state
+	// Guard: si no se inicializó bien, no intentes renderizar
+	if (!m_cubeModel || !m_skyboxTexture.m_textureFromImg) return;
+
+	// 1) States del skybox
 	m_rasterizerState.render(deviceContext);
-
-	// Set depth stencil state
 	m_depthStencilState.render(deviceContext, 0, false);
-	// Render the cube model with the cubemap texture
 
-	// View sin traslación
-	XMMATRIX view = camera.getView();
-	view = XMMatrixTranspose(camera.GetViewNoTranslation());
-	XMMATRIX vp = view * camera.getProj();
-
-	// Set constant buffer
+	// 2) View sin traslación + VP (SOLO una transpuesta al final)
+	XMMATRIX viewNoT = camera.GetViewNoTranslation();
+	XMMATRIX vp = viewNoT * camera.getProj();
 	CBSkybox cb{};
 	cb.mviewProj = XMMatrixTranspose(vp);
 	m_constantBuffer.update(deviceContext, nullptr, 0, nullptr, &cb, 0, 0);
 	m_constantBuffer.render(deviceContext, 0, 1);
 
-	// Set shader program
+	// 3) Shader + sampler (slot 10)
 	m_shaderProgram.render(deviceContext);
+	m_samplerState.render(deviceContext, 10, 1);
 
-	// Set sampler state
-	m_samplerState.render(deviceContext, 0, 1);
+	// 4) IMPORTANTÍSIMO: bindea cubemap ANTES del draw (slot 10)
+	m_skyboxTexture.render(deviceContext, 10, 1);
 
-	// Draw
-	deviceContext.DrawIndexed(m_cubeModel->m_meshes[0].m_index.size(), 0, 0);
+	// 5) Asegura IA (topology + VB/IB) antes del DrawIndexed
+	m_skybox->renderForSkybox(deviceContext);
 
-	// Set cubemap texture
-	m_skyboxTexture.render(deviceContext, 0, 1);
+	// 3) Limpia t0 para evitar mismatch por shaders 2D que usen t0
+	ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
+	deviceContext.m_deviceContext->PSSetShaderResources(10, 1, nullSRV);
+
+	// 5) Unbind t10
+	deviceContext.m_deviceContext->PSSetShaderResources(0, 1, nullSRV);
 }

@@ -119,7 +119,7 @@ BaseApp::init() {
 		"Skybox/cubemap_4.png",
 		"Skybox/cubemap_5.png"
 	};
-	m_skyboxTex.CreateCubemap(m_device, m_deviceContext, faces, true);
+	m_skyboxTex.CreateCubemap(m_device, m_deviceContext, faces, false);
 
 	// Set Peashooter Actor
 	m_peashooter = EU::MakeShared<Actor>(m_device);
@@ -223,6 +223,20 @@ BaseApp::init() {
 
 	// Initialize the Skybox
 	m_skybox.init(m_device, &m_deviceContext, m_skyboxTex);
+
+	hr = m_defaultRasterizer.init(m_device, D3D11_FILL_SOLID, D3D11_CULL_BACK, false, true);
+	if (FAILED(hr)) {
+		ERROR("Main", "InitDevice",
+			("Failed to initialize default Rasterizer. HRESULT: " + std::to_string(hr)).c_str());
+		return hr;
+	}
+	hr = m_defaultDepthStencil.init(m_device, true, D3D11_DEPTH_WRITE_MASK_ALL, D3D11_COMPARISON_LESS);
+	if (FAILED(hr)) {
+		ERROR("Main", "InitDevice",
+			("Failed to initialize default DepthStencilState. HRESULT: " + std::to_string(hr)).c_str());
+		return hr;
+	}
+
 	return S_OK;
 }
 
@@ -249,31 +263,6 @@ void BaseApp::update(float deltaTime)
 	m_gui.inspectorGeneral(m_actors[m_gui.selectedActorIndex]);
 	m_gui.outliner(m_actors);
 
-	// Shot cubemap on imgui image
-	static ID3D11ShaderResourceView* faceSRV[6] = { nullptr };
-
-	if (!faceSRV[0]) {
-		for (UINT i = 0; i < 6; ++i) {
-			faceSRV[i] = m_skyboxTex.CreateCubemapFaceSRV(m_device.m_device, m_skyboxTex.m_texture,
-				DXGI_FORMAT_R8G8B8A8_UNORM, i, 1);
-		}
-	}
-
-	ImGui::Text("Cubemap Faces:");
-	const float thumb = 128.0f;
-
-	for (int i = 0; i < 6; ++i) {
-		ImGui::Image((ImTextureID)faceSRV[i], ImVec2(thumb, thumb));
-		if ((i % 3) != 2) ImGui::SameLine();
-	}
-	ImGui::Begin("Cubemap");
-	ImGui::Text("Skybox Cubemap");
-	ImGui::Image((void*)m_skyboxTex.m_textureFromImg,
-		ImVec2(256, 256),
-		ImVec2(0, 0),
-		ImVec2(1, 1));
-	ImGui::End();
-
 	// Actualizar la matriz de proyección y vista
 	m_camera.updateViewMatrix();
 	cbNeverChanges.mView = XMMatrixTranspose(m_camera.getView());
@@ -288,7 +277,8 @@ void BaseApp::update(float deltaTime)
 }
 
 void
-BaseApp::render() {
+BaseApp::render() 
+{
 	// Set Render Target View
 	float ClearColor[4] = { 0.1f, 0.1f, 0.1f, 1.0f };
 	m_renderTargetView.render(m_deviceContext, m_depthStencilView, 1, ClearColor);
@@ -300,14 +290,28 @@ BaseApp::render() {
 	m_depthStencilView.render(m_deviceContext);
 
 	// Set shader program
+	// 1) SKYBOX PASS
+	m_skybox.render(m_deviceContext, m_camera);
+
+	// 2) RESTAURAR ESTADOS + PIPELINE DE ESCENA (esto te faltaba)
+	m_defaultRasterizer.render(m_deviceContext);
+	m_defaultDepthStencil.render(m_deviceContext, 0, false);
+
+	// limpia SRVs por seguridad
+	ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
+	m_deviceContext.m_deviceContext->PSSetShaderResources(10, 1, nullSRV);
+	m_deviceContext.m_deviceContext->PSSetShaderResources(0, 1, nullSRV);
+
+	// Re-bindea shader/layout de escena
 	m_shaderProgram.render(m_deviceContext);
+	m_deviceContext.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// Asignar buffers constantes
+	// CBs para VS (view/proj)
 	m_cbNeverChanges.render(m_deviceContext, 0, 1);
 	m_cbChangeOnResize.render(m_deviceContext, 1, 1);
 	
-	// Render all actors
-	m_skybox.render(m_deviceContext, m_camera);
+	// 3) SCENE PASS
 	m_sceneGraph.render(m_deviceContext);
 
 	// Render UI
