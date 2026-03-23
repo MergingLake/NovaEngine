@@ -73,9 +73,17 @@ ModelLoader::LoadOBJ(const std::string& filename, MeshComponent& outMesh) {
           }
 
           SimpleVertex new_vert;
-          new_vert.Pos = temp_positions[v_idx - 1];
-          new_vert.Tex = (vt_idx > 0) ? temp_uvs[vt_idx - 1] : XMFLOAT2(0, 0);
-          new_vert.Normal = (vn_idx > 0) ? temp_normals[vn_idx - 1] : XMFLOAT3(0, 1, 0);
+          new_vert.Position = EU::Vector3(
+            temp_positions[v_idx - 1].x,
+            temp_positions[v_idx - 1].y,
+            temp_positions[v_idx - 1].z
+          );
+          new_vert.TextureCoordinate = (vt_idx > 0)
+            ? EU::Vector2(temp_uvs[vt_idx - 1].x, temp_uvs[vt_idx - 1].y)
+            : EU::Vector2(0, 0);
+          new_vert.Normal = (vn_idx > 0)
+            ? EU::Vector3(temp_normals[vn_idx - 1].x, temp_normals[vn_idx - 1].y, temp_normals[vn_idx - 1].z)
+            : EU::Vector3(0, 1, 0);
 
           final_vertices.push_back(new_vert);
           unsigned int new_index = static_cast<unsigned int>(final_vertices.size() - 1);

@@ -128,22 +128,50 @@ BaseApp::init() {
 	if (!m_peashooter.isNull()) {
 		// Crear vertex buffer y index buffer para el Peashooter
 		std::vector<MeshComponent> peashooterMeshes;
-		m_model = new Model3D("Models/Peashooter.fbx", ModelType::FBX);
+		m_model = new Model3D("Models/DMR.fbx", ModelType::FBX);
 		peashooterMeshes = m_model->GetMeshes();
 
 		std::vector<Texture> peashooterTextures;
-		hr = m_peashooterAlbedo.init(m_device, "Textures/Peashooter_Texture", ExtensionType::PNG);
+		hr = m_AlbedoSRV.init(m_device, "Textures/DMR/base", PNG);
+		if (FAILED(hr)) {
+			ERROR("Main", "InitDevice",
+				("Failed to initialize DMR Texture. HRESULT: " + std::to_string(hr)).c_str());
+			return hr;
+		}
+		hr = m_MetallicSRV.init(m_device, "Textures/DMR/metallic", PNG);
+		if (FAILED(hr)) {
+			ERROR("Main", "InitDevice",
+				("Failed to initialize DMR Texture. HRESULT: " + std::to_string(hr)).c_str());
+			return hr;
+		}
+		hr = m_RoughnessSRV.init(m_device, "Textures/DMR/roughness", PNG);
+		if (FAILED(hr)) {
+			ERROR("Main", "InitDevice",
+				("Failed to initialize DMR Texture. HRESULT: " + std::to_string(hr)).c_str());
+			return hr;
+		}
+		hr = m_AOSRV.init(m_device, "Textures/DMR/ao", PNG);
 		// Load the Texture
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
-				("Failed to initialize cyberGunAlbedo. HRESULT: " + std::to_string(hr)).c_str());
+				("Failed to initialize DMR Texture. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
-		peashooterTextures.push_back(m_peashooterAlbedo);
+		hr = m_NormalSRV.init(m_device, "Textures/DMR/normal", PNG);
+		if (FAILED(hr)) {
+			ERROR("Main", "InitDevice",
+				("Failed to initialize DMR Texture. HRESULT: " + std::to_string(hr)).c_str());
+			return hr;
+		}
+		peashooterTextures.push_back(m_AlbedoSRV);
+		peashooterTextures.push_back(m_NormalSRV);
+		peashooterTextures.push_back(m_MetallicSRV);
+		peashooterTextures.push_back(m_RoughnessSRV);
+		peashooterTextures.push_back(m_AOSRV);
 
 		m_peashooter->setMesh(m_device, peashooterMeshes);
 		m_peashooter->setTextures(peashooterTextures);
-		m_peashooter->setName("Peashooter");
+		m_peashooter->setName("DMR");
 		m_actors.push_back(m_peashooter);
 
 		m_peashooter->getComponent<Transform>()->setTransform(EU::Vector3(0.0f, 0.0f, 0.0f),
@@ -151,7 +179,7 @@ BaseApp::init() {
 			EU::Vector3(1.0f, 1.0f, 1.0f));
 	}
 	else {
-		ERROR("Main", "InitDevice", "Failed to create Peashooter Actor.");
+		ERROR("Main", "InitDevice", "Failed to create DMR Actor.");
 		return E_FAIL;
 	}
 
@@ -177,17 +205,10 @@ BaseApp::init() {
 	}
 
 	// Create the constant buffers
-	hr = m_cbNeverChanges.init(m_device, sizeof(CBNeverChanges));
+	hr = m_constantBuffer.init(m_device, sizeof(CBMain));
 	if (FAILED(hr)) {
 		ERROR("Main", "InitDevice",
-			("Failed to initialize NeverChanges Buffer. HRESULT: " + std::to_string(hr)).c_str());
-		return hr;
-	}
-
-	hr = m_cbChangeOnResize.init(m_device, sizeof(CBChangeOnResize));
-	if (FAILED(hr)) {
-		ERROR("Main", "InitDevice",
-			("Failed to initialize ChangeOnResize Buffer. HRESULT: " + std::to_string(hr)).c_str());
+			("Failed to initialize m_constantBuffer Buffer. HRESULT: " + std::to_string(hr)).c_str());
 		return hr;
 	}
 
@@ -195,8 +216,8 @@ BaseApp::init() {
 	m_camera.setLens(XM_PIDIV4, m_window.m_width / (float)m_window.m_height, 0.01f, 100.0f);
 	m_camera.setPosition(0.0f, 3.0f, -6.0f);
 
-	cbNeverChanges.mView = XMMatrixTranspose(m_camera.getView());
-	cbChangesOnResize.mProjection = XMMatrixTranspose(m_camera.getProj());
+	m_constantBufferStruct.LightColor = EU::Vector3(1.0f, 1.0f, 1.0f);
+	m_constantBufferStruct.LightDir = EU::Vector3(-0.20f, -1.0f, 1.0f);
 
 	// Initialize the Skybox
 	m_skybox.init(m_device, &m_deviceContext, m_skyboxTex);
@@ -243,10 +264,20 @@ void BaseApp::update(float deltaTime)
 
 	// Actualizar la matriz de proyección y vista
 	m_camera.updateViewMatrix();
-	cbNeverChanges.mView = XMMatrixTranspose(m_camera.getView());
-	m_cbNeverChanges.update(m_deviceContext, nullptr, 0, nullptr, &cbNeverChanges, 0, 0);
-	m_cbChangeOnResize.update(m_deviceContext, nullptr, 0, nullptr, &cbChangesOnResize, 0, 0);
-	//cbChangesOnResize.mProjection = XMMatrixTranspose(m_camera.getProj());
+	
+	XMStoreFloat4x4(&m_constantBufferStruct.View, XMMatrixTranspose(m_camera.getView()));
+	XMStoreFloat4x4(&m_constantBufferStruct.Projection, XMMatrixTranspose(m_camera.getProj()));
+	m_constantBufferStruct.CameraPos = m_camera.getPosition();
+
+	// Luz blanca fuerte
+	m_gui.vec3Control("Light Direction", &m_constantBufferStruct.LightDir.x, 0.1f);
+	m_gui.vec3Control("Light Color", &m_constantBufferStruct.LightColor.x, 0.1f);
+
+	// Update Skybox Pass -> Solo necesita la vista sin traslación + proyección para funcionar correctamente (ver método update de Skybox)
+	m_skybox.update(m_deviceContext, m_camera);
+
+	// Update constant buffer for Scene Pass
+	m_constantBuffer.update(m_deviceContext, nullptr, 0, nullptr, &m_constantBufferStruct, 0, 0);
 
 	// Update Actors
 	m_sceneGraph.update(deltaTime, m_deviceContext);
@@ -269,7 +300,7 @@ BaseApp::render()
 
 	// Set shader program
 	// 1) SKYBOX PASS
-	m_skybox.render(m_deviceContext, m_camera);
+	m_skybox.render(m_deviceContext);
 
 	// 2) RESTAURAR ESTADOS + PIPELINE DE ESCENA
 	m_defaultRasterizer.render(m_deviceContext);
@@ -282,12 +313,10 @@ BaseApp::render()
 
 	// Re-bindea shader/layout de escena
 	m_shaderProgram.render(m_deviceContext);
-	//m_deviceContext.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// Asignar buffers constantes
 	// CBs para VS (view/proj)
-	m_cbNeverChanges.render(m_deviceContext, 0, 1);
-	m_cbChangeOnResize.render(m_deviceContext, 1, 1);
+	m_constantBuffer.render(m_deviceContext, 0, 1, true);
 	
 	// 3) SCENE PASS
 	m_sceneGraph.render(m_deviceContext);
@@ -303,8 +332,15 @@ void
 BaseApp::destroy() {
 	if (m_deviceContext.m_deviceContext) m_deviceContext.m_deviceContext->ClearState();
 	m_sceneGraph.destroy();
-	m_cbNeverChanges.destroy();
-	m_cbChangeOnResize.destroy();
+	m_AlbedoSRV.destroy();
+	m_MetallicSRV.destroy();
+	m_NormalSRV.destroy();
+	m_RoughnessSRV.destroy();
+	m_AOSRV.destroy();
+	m_defaultRasterizer.destroy();
+	m_defaultDepthStencil.destroy();
+	//m_cbNeverChanges.destroy();
+	//m_cbChangeOnResize.destroy();
 	m_shaderProgram.destroy();
 	m_depthStencil.destroy();
 	m_depthStencilView.destroy();

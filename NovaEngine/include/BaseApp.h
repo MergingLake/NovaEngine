@@ -107,11 +107,18 @@ private:
 	DepthStencilView									  m_depthStencilView;
 	Viewport                            m_viewport;
 	ShaderProgram												m_shaderProgram;
-	Buffer															m_cbNeverChanges;
-	Buffer															m_cbChangeOnResize;
+	//Buffer															m_cbNeverChanges;
+	//Buffer															m_cbChangeOnResize;
 	bool m_d3dReady = false;
-	Texture 														m_peashooterAlbedo;
-	Texture 														m_skyboxTex;
+	Buffer m_constantBuffer;
+	CBMain m_constantBufferStruct;
+
+	// Textures
+	Texture m_AlbedoSRV;
+	Texture m_MetallicSRV;
+	Texture m_RoughnessSRV;
+	Texture m_AOSRV;
+	Texture m_NormalSRV;
 
 	Camera															m_camera;
 
@@ -121,12 +128,14 @@ private:
 
 	Model3D*                               m_model;
 
-	CBChangeOnResize										cbChangesOnResize;
-	CBNeverChanges											cbNeverChanges;
+	//CBChangeOnResize										cbChangesOnResize;
+	//CBNeverChanges											cbNeverChanges;
 
 	GUI																					m_gui;
+	EU::Vector3 m_cameraPos;
 
 	Skybox m_skybox;
+	Texture															m_skyboxTex;
 	RasterizerState m_defaultRasterizer;
 	DepthStencilState m_defaultDepthStencil;
 };
