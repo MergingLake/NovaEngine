@@ -282,9 +282,6 @@ void BaseApp::update(float deltaTime)
 	// Update Actors
 	m_sceneGraph.update(deltaTime, m_deviceContext);
 
-	//for (auto& actor : m_actors) {
-	//	actor->update(deltaTime, m_deviceContext);
-	//}
 	m_gui.editTransform(m_camera.getView(), m_camera.getProj(), m_actors[m_gui.selectedActorIndex]);
 }
 
@@ -309,10 +306,6 @@ BaseApp::render() {
 	
 	// Render all actors
 	m_sceneGraph.render(m_deviceContext);
-
-	//for (auto& actor : m_actors) {
-	//	actor->render(m_deviceContext);
-	//}
 
 	// Render UI
 	m_gui.render();
@@ -344,16 +337,13 @@ BaseApp::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 		return true;
 	}
 
-	switch (message)
-	{
-	case WM_CREATE:
-	{
+	switch (message) {
+	case WM_CREATE: {
 		CREATESTRUCT* pCreate = reinterpret_cast<CREATESTRUCT*>(lParam);
 		SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)pCreate->lpCreateParams);
 	}
 	return 0;
-	case WM_PAINT:
-	{
+	case WM_PAINT: {
 		PAINTSTRUCT ps;
 		BeginPaint(hWnd, &ps);
 		EndPaint(hWnd, &ps);

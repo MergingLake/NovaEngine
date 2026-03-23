@@ -63,6 +63,11 @@ struct SimpleVertex
   XMFLOAT3 Normal;
 };
 
+struct
+  SkyboxVertex {
+  float x, y, z;
+};
+
 struct CBNeverChanges
 {
   XMMATRIX mView;

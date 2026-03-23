@@ -97,12 +97,13 @@ public:
       D3D11_BUFFER_DESC& desc,
       D3D11_SUBRESOURCE_DATA* initData);
 
-private:
+public:
   /*
     @brief Buffer de D3D11 administrado por la clase.
   */
   ID3D11Buffer* m_buffer = nullptr;
 
+private:
   /*
 		@brief Stride del buffer (tamaño de cada elemento en bytes).
   */

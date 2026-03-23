@@ -57,6 +57,7 @@ public:
     @brief The list of vertices in the mesh.
   */
   std::vector<SimpleVertex> m_vertex;
+	std::vector<SkyboxVertex> m_skyVertex;
 
   /*
     @brief The list of indices in the mesh.
