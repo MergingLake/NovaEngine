@@ -1,6 +1,8 @@
 #pragma once
 #include "Prerequisites.h"
 
+class BaseApp;
+
 /*
   @class Window
   @brief A class representing a window in the application.
@@ -27,7 +29,7 @@ public:
 		@return HRESULT indicating success or failure of the operation.
 	*/
 	HRESULT 
-	init(HINSTANCE hInstance, int nCmdShow, WNDPROC wndProc);
+	init(HINSTANCE hInstance, int nCmdShow, WNDPROC wndProc, BaseApp* app);
 
 	/* 
 		@brief Updates the window.

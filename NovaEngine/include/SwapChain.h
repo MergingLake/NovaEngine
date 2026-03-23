@@ -65,6 +65,12 @@ public:
   void
     present();
 
+  HRESULT
+    resizeBuffers(UINT width, UINT height);
+
+  HRESULT
+    getBackBuffer(Texture& backBuffer);
+
 public:
   /*
 		@brief The swap chain interface.
