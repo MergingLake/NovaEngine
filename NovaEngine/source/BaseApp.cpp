@@ -224,6 +224,7 @@ BaseApp::init() {
 	// Initialize the Skybox
 	m_skybox.init(m_device, &m_deviceContext, m_skyboxTex);
 
+	// Initialize default states (Rasterizer, DepthStencil)
 	hr = m_defaultRasterizer.init(m_device, D3D11_FILL_SOLID, D3D11_CULL_BACK, false, true);
 	if (FAILED(hr)) {
 		ERROR("Main", "InitDevice",
@@ -293,7 +294,7 @@ BaseApp::render()
 	// 1) SKYBOX PASS
 	m_skybox.render(m_deviceContext, m_camera);
 
-	// 2) RESTAURAR ESTADOS + PIPELINE DE ESCENA (esto te faltaba)
+	// 2) RESTAURAR ESTADOS + PIPELINE DE ESCENA
 	m_defaultRasterizer.render(m_deviceContext);
 	m_defaultDepthStencil.render(m_deviceContext, 0, false);
 
@@ -304,7 +305,7 @@ BaseApp::render()
 
 	// Re-bindea shader/layout de escena
 	m_shaderProgram.render(m_deviceContext);
-	m_deviceContext.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	//m_deviceContext.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// Asignar buffers constantes
 	// CBs para VS (view/proj)
