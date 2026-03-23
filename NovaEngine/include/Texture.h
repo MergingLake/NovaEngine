@@ -91,6 +91,15 @@ public:
   void
     destroy();
 
+  /*
+	* @brief Creates a cubemap texture from the specified file paths for each face of the cubemap.
+	* @details This method loads six texture files corresponding to the faces of the cubemap (positive X, negative X, positive Y, negative Y, positive Z, negative Z) and creates a cubemap texture resource. It can also generate mipmaps for the cubemap if specified.
+	* @param device The device to create the cubemap texture on.
+	* @param deviceContext The device context to use for resource initialization.
+	* @param facePaths An array of six strings representing the file paths for each face of the cubemap in the order: positive X, negative X, positive Y, negative Y, positive Z, negative Z.
+	* @param generateMips A boolean indicating whether to generate mipmaps for the cubemap texture (default is false).
+	* @return HRESULT indicating success or failure of the operation.
+  */
   HRESULT
     CreateCubemap(Device& device,
       DeviceContext& deviceContext,

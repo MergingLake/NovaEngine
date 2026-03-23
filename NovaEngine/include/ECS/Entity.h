@@ -7,6 +7,9 @@ class DeviceContext;
 class
   Entity {
 public:
+  /*
+	 * @brief Constructor por defecto.
+   */
   Entity() = default;
 
   /**

@@ -65,9 +65,20 @@ public:
   void
     present();
 
+  /*
+	* @brief Resizes the swap chain buffers to match the new window dimensions.
+	* @param width The new width of the swap chain buffers.
+	* @param height The new height of the swap chain buffers.
+	* @details This method should be called whenever the window is resized to ensure that the swap chain buffers are updated to match the new window dimensions. It typically involves calling IDXGISwapChain::ResizeBuffers and updating any associated render target views or depth stencil views to match the new buffer sizes.
+  */
   HRESULT
     resizeBuffers(UINT width, UINT height);
 
+  /*
+	* @brief Retrieves the back buffer texture from the swap chain.
+	* @param backBuffer A reference to a Texture object that will receive the back buffer texture.
+	* @return HRESULT indicating success or failure of the operation. If successful, the backBuffer parameter will be populated with the texture resource representing the swap chain's back buffer, which can be used for rendering and other operations.
+  */
   HRESULT
     getBackBuffer(Texture& backBuffer);
 

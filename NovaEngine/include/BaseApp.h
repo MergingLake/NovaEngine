@@ -81,6 +81,12 @@ public:
 	void
 		destroy();
 
+	/*
+	* @brief Handles window resizing events, updating the swap chain and related resources accordingly.
+	* @param newW The new width of the window after resizing.
+	* @param newH The new height of the window after resizing.
+	* @details This method should be called whenever the window is resized to ensure that the swap chain and related resources (such as render target views and depth stencil views) are updated to match the new window dimensions. It typically involves resizing the swap chain buffers, recreating render target views, and updating the viewport to ensure that rendering continues correctly with the new window size.
+	*/
 	void
 		onResize(UINT newW, UINT newH);
 
