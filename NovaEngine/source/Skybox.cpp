@@ -32,7 +32,7 @@ Skybox::init(Device& device, DeviceContext* deviceContext, Texture& cubemap) {
 		skybox = m_cubeModel->GetMeshes();
 
 		m_skybox->setMesh(device, skybox);
-		m_skybox->setName("CyberGun");
+		m_skybox->setName("Peashooter");
 	}
 	else {
 		ERROR("Skybox", "Init", "Failed to create Skybox Actor.");
@@ -52,7 +52,12 @@ Skybox::init(Device& device, DeviceContext* deviceContext, Texture& cubemap) {
 
 	HRESULT hr = S_OK;
 
-	hr = m_shaderProgram.init(device, "Skybox.fx", Layout);
+	hr = m_shaderProgram.init(device, "Skybox.hlsl", Layout);
+	if (FAILED(hr)) {
+		ERROR("Skybox", "init",
+			("Failed to initialize ShaderProgram. HRESULT: " + std::to_string(hr)).c_str());
+		return hr;
+	}
 
 	hr = m_constantBuffer.init(device, sizeof(CBSkybox));
 	if (FAILED(hr)) {
@@ -67,30 +72,29 @@ Skybox::init(Device& device, DeviceContext* deviceContext, Texture& cubemap) {
 	}
 
 	// Init Rasterizer
-	//hr = m_rasterizerState.init(device, true, false);
-	//if (FAILED(hr)) {
-	//	ERROR("Skybox", "init", "Failed to create new RasterizerState");
-	//}
+	hr = m_rasterizerState.init(device, D3D11_FILL_SOLID, D3D11_CULL_FRONT);
+	if (FAILED(hr)) {
+		ERROR("Skybox", "init", "Failed to create new RasterizerState");
+	}
 
 	// Init DepthStencilState
-	//hr = m_depthStencilState.init(device, true, false);
-	//if (FAILED(hr)) {
-	//	ERROR("Skybox", "init", "Failed to create new DepthStencilState");
-	//}
+	hr = m_depthStencilState.init(device, true, false);
+	if (FAILED(hr)) {
+		ERROR("Skybox", "init", "Failed to create new DepthStencilState");
+	}
 
 
-	return E_NOTIMPL;
+	return S_OK;
 }
 
 void
 Skybox::render(DeviceContext& deviceContext, Camera& camera) {
 	// Set rasterizer state
-	//m_rasterizerState.render(deviceContext);
+	m_rasterizerState.render(deviceContext);
 
 	// Set depth stencil state
-	//m_depthStencilState.render(deviceContext);
+	m_depthStencilState.render(deviceContext, 0, false);
 	// Render the cube model with the cubemap texture
-
 
 	// View sin traslación
 	XMMATRIX view = camera.getView();

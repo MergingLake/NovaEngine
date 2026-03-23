@@ -17,6 +17,7 @@
 #include "EngineUtilities\GUI\UserInterface.h"
 #include "SceneGraph\SceneGraph.h"
 #include "EngineUtilities/Utilities/Camera.h"
+#include "EngineUtilities/Utilities/Skybox.h"
 
 extern IMGUI_IMPL_API
 LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -119,4 +120,6 @@ private:
 	CBNeverChanges											cbNeverChanges;
 
 	GUI																					m_gui;
+
+	Skybox m_skybox;
 };
