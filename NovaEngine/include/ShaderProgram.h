@@ -5,6 +5,7 @@
 // Forward declarations
 class Device;
 class DeviceContext;
+class LayoutBuilder;
 
 /*
 	@class ShaderProgram
@@ -33,9 +34,7 @@ public:
 		@return HRESULT indicating success or failure of the operation.
   */
   HRESULT
-    init(Device& device,
-      const std::string& fileName,
-      std::vector<D3D11_INPUT_ELEMENT_DESC> Layout);
+    init(Device& device, const std::string& fileName, LayoutBuilder layoutBuilder);
 
   /*
 		@brief Updates the shader program.
@@ -70,8 +69,7 @@ public:
 		@param Layout A vector of D3D11_INPUT_ELEMENT_DESC structures that describe the input-buffer data.
   */
   HRESULT
-    CreateInputLayout(Device& device,
-      std::vector<D3D11_INPUT_ELEMENT_DESC> Layout);
+    CreateInputLayout(Device& device, LayoutBuilder);
 
   /*
     @brief Creates a shader of the specified type.

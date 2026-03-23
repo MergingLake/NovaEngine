@@ -160,40 +160,16 @@ BaseApp::init() {
 		m_sceneGraph.addEntity(actor.get());
 	}
 
-	// Define the input layout
-	std::vector<D3D11_INPUT_ELEMENT_DESC> Layout;
-	D3D11_INPUT_ELEMENT_DESC position;
-	position.SemanticName = "POSITION";
-	position.SemanticIndex = 0;
-	position.Format = DXGI_FORMAT_R32G32B32_FLOAT;
-	position.InputSlot = 0;
-	position.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT /*0*/;
-	position.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-	position.InstanceDataStepRate = 0;
-	Layout.push_back(position);
+	LayoutBuilder builder;
 
-	D3D11_INPUT_ELEMENT_DESC texcoord;
-	texcoord.SemanticName = "TEXCOORD";
-	texcoord.SemanticIndex = 0;
-	texcoord.Format = DXGI_FORMAT_R32G32_FLOAT;
-	texcoord.InputSlot = 0;
-	texcoord.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT /*0*/;
-	texcoord.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-	texcoord.InstanceDataStepRate = 0;
-	Layout.push_back(texcoord);
-
-	D3D11_INPUT_ELEMENT_DESC normal;
-	normal.SemanticName = "NORMAL";
-	normal.SemanticIndex = 0;
-	normal.Format = DXGI_FORMAT_R32G32B32_FLOAT;
-	normal.InputSlot = 0;
-	normal.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT /*0*/;
-	normal.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-	normal.InstanceDataStepRate = 0;
-	Layout.push_back(normal);
+	builder.Add("POSITION", DXGI_FORMAT_R32G32B32_FLOAT)
+		.Add("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT)
+		.Add("TANGENT", DXGI_FORMAT_R32G32B32_FLOAT)
+		.Add("BITANGENT", DXGI_FORMAT_R32G32B32_FLOAT)
+		.Add("TEXCOORD", DXGI_FORMAT_R32G32_FLOAT);
 
 	// Create the Shader Program
-	hr = m_shaderProgram.init(m_device, "NovaEngine.fx", Layout);
+	hr = m_shaderProgram.init(m_device, "PBRShader.hlsl", builder);
 	if (FAILED(hr)) {
 		ERROR("Main", "InitDevice",
 			("Failed to initialize ShaderProgram. HRESULT: " + std::to_string(hr)).c_str());
