@@ -5,42 +5,25 @@
 // Forward Declaration
 class Skybox;
 
-/**
- * @class RenderScene
- * @brief A data transfer object (DTO) containing a snapshot of all visible objects for a single frame.
- * @author Ricardo Rabell
- * @date 2026-04-25
- *
- * @details
- * **Context:** In a modern engine, the Game Logic (ECS) and the Renderer should be decoupled.
- * The ECS updates positions, animations, and physics. Once the frame is updated, it extracts
- * all the visible data and packages it into this `RenderScene` object, handing it off to the `ForwardRenderer`.
- * * **Why it exists:** This prevents the Renderer from having to know what an "Actor" or "Entity" is.
- * It only cares about raw geometry (`RenderObject`), lights, and the skybox. This separation makes
- * multi-threading much easier in the future (Logic thread builds the scene, Render thread draws it).
- * * **Analogy:** The ECS is the movie director setting up the actors on stage. The `RenderScene`
- * is a photograph of that setup. The Renderer is the painter who looks ONLY at the photograph
- * to paint the final canvas.
+/*
+ * @struct RenderObject
+ * @brief The RenderObject structure represents an individual object in the render scene, containing a reference to its mesh and material instance. It serves as a container for the geometry and material information needed to render the object in the scene.
+ * @details The RenderObject structure includes a pointer to a Mesh object that defines the geometry of the object and a pointer to a MaterialInstance that specifies the material properties and textures to be used when rendering this object. This structure is used within the RenderScene to organize and manage the objects that need to be rendered, allowing for efficient rendering operations based on their associated meshes and materials.
  */
 class 
 RenderScene {
 public:
-	/**
-	 * @brief Clears all object and light lists to prepare for the next frame's data.
+	/* 
+	 * @brief Clears the render scene by removing all objects and lights, and resetting the skybox reference.
+	 * @details This method clears the render scene by emptying the vectors of opaque and transparent objects, as well as the vector of directional lights. It also resets the pointer to the skybox to nullptr. This is typically called at the beginning of each frame to prepare the scene for new objects and lighting information to be added for rendering.
+	 * @return void
 	 */
 	void
 	clear();
 
 public:
-	/** @brief List of solid objects that block light. Sorted front-to-back by the renderer. */
 	std::vector<RenderObject> opaqueObjects;
-
-	/** @brief List of objects with transparency (glass, water). Sorted back-to-front by the renderer. */
 	std::vector<RenderObject> transparentObjects;
-
-	/** @brief List of active lights affecting the scene. */
 	std::vector<LightData> directionalLights;
-
-	/** @brief Pointer to the active skybox environment, if any. */
 	Skybox* skybox = nullptr;
 };

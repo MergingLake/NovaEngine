@@ -2,14 +2,10 @@
 #include "Prerequisites.h"
 #include "Buffer.h"
 
-/**
+/*
  * @struct Submesh
- * @brief A localized chunk of geometry that uses a single Material Instance.
- * * @details
- * **Why it exists:** A 3D artist might export a Car as a single file. However,
- * the car has a metal body, rubber tires, and glass windows. A GPU draw call
- * can only use ONE material at a time. Therefore, the engine splits the Car into
- * three `Submesh`es.
+ * @brief The Submesh structure represents a portion of a mesh that can be rendered with a specific material. It contains GPU buffers for vertex and index data, as well as information about the number of indices to draw, the starting index in the index buffer, and the material slot that maps to a specific MaterialInstance on the Actor.
+ * @details The Submesh structure is used to define the geometry and material association for a specific part of a mesh, allowing for efficient rendering of complex objects with multiple materials. Each Submesh can be rendered independently using its vertex and index buffers, and the material slot can be used to determine which MaterialInstance to use when rendering this submesh in the scene.
  */
 struct 
 Submesh {
@@ -20,37 +16,34 @@ Submesh {
 	unsigned int materialSlot = 0;///< Maps this geometry to a specific MaterialInstance array index on the Actor.
 };
 
-/**
+/*
  * @class Mesh
- * @brief A container representing a complete 3D model, composed of one or more Submeshes.
- * @author Ricardo Rabell
- * @date 2026-04-25
- *
- * @details
- * **Context:** This is the top-level asset loaded from an OBJ or FBX file.
- * * **Analogy:** The `Mesh` is an entire action figure toy. The `Submesh`es are the
- * individual plastic pieces molded in the factory (an arm, the torso, a weapon)
- * that are glued together to form the whole.
+ * @brief The Mesh class represents a 3D mesh composed of multiple submeshes, each with its own vertex and index buffers and material association. It provides methods for accessing the submeshes and destroying the resources associated with the mesh.
+ * @details The Mesh class serves as a container for the geometry data of a 3D object, allowing for efficient rendering of complex objects with multiple materials. It manages a collection of Submesh instances, each representing a portion of the mesh that can be rendered independently. The destroy method is responsible for releasing the GPU resources associated with each submesh, ensuring proper cleanup when the mesh is no longer needed.
  */
 class 
 Mesh {
 public:
-	/**
-	 * @brief Retrieves the list of geometry parts.
-	 * @return std::vector<Submesh>& Mutable reference to the submeshes.
+	/*
+	 * @brief Retrieves the vector of Submesh instances that make up this Mesh.
+	 * @details This method returns a reference to the vector of Submesh instances that define the geometry and material associations for this mesh. Each Submesh contains GPU buffers for vertex and index data, as well as information about how to render that portion of the mesh. The returned reference allows for both reading and modifying the submeshes as needed.
+	 * @return A reference to the vector of Submesh instances that make up this Mesh.
 	 */
 	std::vector<Submesh>&
 	getSubmeshes() { return m_submeshes; }
 
-	/**
-	 * @brief Retrieves the list of geometry parts (read-only).
-	 * @return const std::vector<Submesh>&
+	/*
+	 * @brief Retrieves the vector of Submesh instances that make up this Mesh (const version).
+	 * @details This method returns a const reference to the vector of Submesh instances that define the geometry and material associations for this mesh. Each Submesh contains GPU buffers for vertex and index data, as well as information about how to render that portion of the mesh. The returned const reference allows for read-only access to the submeshes, ensuring that they cannot be modified through this method.
+	 * @return A const reference to the vector of Submesh instances that make up this Mesh.
 	 */
 	const std::vector<Submesh>&
 	getSubmeshes() const { return m_submeshes; }
 
-	/**
-	 * @brief Releases GPU memory for all associated vertex and index buffers.
+	/*
+	 * @brief Destroys the resources associated with this Mesh.
+	 * @details This method iterates through each Submesh in the mesh and calls the destroy method on the vertex and index buffers to release the GPU resources. After destroying the buffers for all submeshes, it clears the vector of submeshes to remove all references to the destroyed resources. It is important to call this method before destroying an instance of Mesh to ensure that all GPU resources are properly released and to prevent memory leaks.
+	 * @return void
 	 */
 	void
 	destroy() {
@@ -63,6 +56,5 @@ public:
 	}
 
 private:
-	/** @brief The collection of geometry parts that make up this model. */
 	std::vector<Submesh> m_submeshes;
 };

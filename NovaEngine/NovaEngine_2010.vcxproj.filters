@@ -51,6 +51,12 @@
     <Filter Include="source\SceneGraph">
       <UniqueIdentifier>{44aabf5e-ea52-4c41-84a2-ee1735654140}</UniqueIdentifier>
     </Filter>
+    <Filter Include="include\Rendering">
+      <UniqueIdentifier>{436afe63-cc59-4e0f-b10f-7ef20b4f2c33}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\Rendering">
+      <UniqueIdentifier>{2a010df4-b088-49de-b536-265d61c9f58b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="NovaEngine.cpp">
@@ -144,6 +150,12 @@
       <Filter>source</Filter>
     </ClCompile>
     <ClCompile Include="source\RasterizerState.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Rendering\ForwardRenderer.cpp">
+      <Filter>source\Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="source\EditorViewportPass.cpp">
       <Filter>source</Filter>
     </ClCompile>
   </ItemGroup>
@@ -298,12 +310,36 @@
     <ClInclude Include="include\EngineUtilities\Utilities\LayoutBuilder.h">
       <Filter>include\Utilities</Filter>
     </ClInclude>
+    <ClInclude Include="include\Rendering\ForwardRenderer.h">
+      <Filter>include\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Rendering\Material.h">
+      <Filter>include\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Rendering\MaterialInstance.h">
+      <Filter>include\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Rendering\Mesh.h">
+      <Filter>include\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Rendering\RenderScene.h">
+      <Filter>include\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Rendering\RenderTypes.h">
+      <Filter>include\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\EngineUtilities\Utilities\EditorViewportPass.h">
+      <Filter>include\Utilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="bin\Skybox.hlsl">
       <Filter>Shaders</Filter>
     </None>
     <None Include="bin\NovaEngine.fx">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="bin\PBRShader.hlsl">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

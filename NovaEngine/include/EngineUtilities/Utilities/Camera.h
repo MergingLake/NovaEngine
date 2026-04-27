@@ -41,12 +41,17 @@ public:
 	void
 		setPosition(const EU::Vector3& pos);
 
+	EU::Vector3
+		getPosition() const { return m_position; }
+
 	/* 
 	 * @brief Retrieves the current position of the camera in world space.
 	 * @return A Vector3 representing the camera's position in world space.
 	*/
 	EU::Vector3&
 		getPosition() { return m_position; }
+
+
 
 	/* 
 	 * @brief Defines the camera's orientation and view matrix based on a target point and an up vector.

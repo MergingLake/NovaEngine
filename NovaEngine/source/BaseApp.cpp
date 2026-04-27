@@ -128,36 +128,36 @@ BaseApp::init() {
 	if (!m_peashooter.isNull()) {
 		// Crear vertex buffer y index buffer para el Peashooter
 		std::vector<MeshComponent> peashooterMeshes;
-		m_model = new Model3D("Models/DMR.fbx", ModelType::FBX);
+		m_model = new Model3D("Models/Gameboy.fbx", ModelType::FBX);
 		peashooterMeshes = m_model->GetMeshes();
 
 		std::vector<Texture> peashooterTextures;
-		hr = m_AlbedoSRV.init(m_device, "Textures/DMR/base", PNG);
+		hr = m_AlbedoSRV.init(m_device, "Textures/Gameboy/base", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
 				("Failed to initialize DMR Texture. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
-		hr = m_MetallicSRV.init(m_device, "Textures/DMR/metallic", PNG);
+		hr = m_MetallicSRV.init(m_device, "Textures/Gameboy/metallic", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
 				("Failed to initialize DMR Texture. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
-		hr = m_RoughnessSRV.init(m_device, "Textures/DMR/roughness", PNG);
+		hr = m_RoughnessSRV.init(m_device, "Textures/Gameboy/roughness", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
 				("Failed to initialize DMR Texture. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
-		hr = m_AOSRV.init(m_device, "Textures/DMR/ao", PNG);
+		hr = m_AOSRV.init(m_device, "Textures/Gameboy/ao", PNG);
 		// Load the Texture
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
 				("Failed to initialize DMR Texture. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
-		hr = m_NormalSRV.init(m_device, "Textures/DMR/normal", PNG);
+		hr = m_NormalSRV.init(m_device, "Textures/Gameboy/normal", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
 				("Failed to initialize DMR Texture. HRESULT: " + std::to_string(hr)).c_str());
@@ -171,7 +171,7 @@ BaseApp::init() {
 
 		m_peashooter->setMesh(m_device, peashooterMeshes);
 		m_peashooter->setTextures(peashooterTextures);
-		m_peashooter->setName("DMR");
+		m_peashooter->setName("Gameboy");
 		m_actors.push_back(m_peashooter);
 
 		m_peashooter->getComponent<Transform>()->setTransform(EU::Vector3(0.0f, 0.0f, 0.0f),
