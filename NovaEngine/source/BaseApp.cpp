@@ -193,49 +193,49 @@ BaseApp::init() {
 	*/
 
 	if (!m_sciFiToad.isNull()) {
-		m_model = new Model3D("Frog/SciFiToad.fbx", ModelType::FBX);
+		m_model = new Model3D("Models/SciFiToad.fbx", ModelType::FBX);
 
-		if (!m_model || !m_model->load("Frog/SciFiToad.fbx")) {
+		if (!m_model || !m_model->load("Models/SciFiToad.fbx")) {
 			ERROR("Main", "InitDevice", "Failed to load SciFiToad model.");
 			return E_FAIL;
 		}
 
-		hr = m_AlbedoSRV.init(m_device, "Frog/Sci-FIToad_Body_BC", PNG);
+		hr = m_AlbedoSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Body_BC", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
 				("Failed to initialize SciFiToad Albedo. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
 
-		hr = m_MetallicSRV.init(m_device, "Frog/Sci-FIToad_Body_M", PNG);
+		hr = m_MetallicSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Body_M", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
 				("Failed to initialize SciFiToad Metallic. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
 
-		hr = m_RoughnessSRV.init(m_device, "Frog/Sci-FIToad_Body_R", PNG);
+		hr = m_RoughnessSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Body_R", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
 				("Failed to initialize SciFiToad Roughness. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
 
-		hr = m_AOSRV.init(m_device, "Frog/Sci-FIToad_Body_AO", PNG);
+		hr = m_AOSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Body_AO", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
 				("Failed to initialize SciFiToad Ambient Occlusion. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
 
-		hr = m_NormalSRV.init(m_device, "Frog/Sci-FIToad_Body_N", PNG);
+		hr = m_NormalSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Body_N", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
 				("Failed to initialize SciFiToad Normal. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
 
-		HRESULT emissiveHr = m_EmissiveSRV.init(m_device, "Frog/Sci-FIToad_Emissive", PNG);
+		HRESULT emissiveHr = m_EmissiveSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Emissive", PNG);
 		if (FAILED(emissiveHr)) {
 			MESSAGE("Main", "InitDevice", "SciFiToad emissive texture not found. Continuing without emissive map.");
 		}
@@ -253,7 +253,7 @@ BaseApp::init() {
 	}
 
 	// -------------------------------------------------------------------------
-	// SpitFire Setup
+	// Gameboy Setup
 	// -------------------------------------------------------------------------
 	if (!m_gameboy.isNull()) {
 		m_gameboyModel = new Model3D("Models/Gameboy.fbx", ModelType::FBX);
@@ -262,7 +262,7 @@ BaseApp::init() {
 			return E_FAIL;
 		}
 
-		hr = m_gameboyAlbedoSRV.init(m_device, "Models/Gameboy_d", PNG);
+		hr = m_gameboyAlbedoSRV.init(m_device, "Textures/Gameboy/Gameboy_d", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
 				("Failed to initialize gameboy albedo texture. HRESULT: " + std::to_string(hr)).c_str());
@@ -418,14 +418,14 @@ BaseApp::init() {
 		hr = submesh.vertexBuffer.init(m_device, meshComponent, D3D11_BIND_VERTEX_BUFFER);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
-				("Failed to initialize CyberGun vertex buffer. HRESULT: " + std::to_string(hr)).c_str());
+				("Failed to initialize Gameboy vertex buffer. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
 
 		hr = submesh.indexBuffer.init(m_device, meshComponent, D3D11_BIND_INDEX_BUFFER);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
-				("Failed to initialize CyberGun index buffer. HRESULT: " + std::to_string(hr)).c_str());
+				("Failed to initialize Gameboy index buffer. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
 
@@ -440,14 +440,14 @@ BaseApp::init() {
 		hr = submesh.vertexBuffer.init(m_device, meshComponent, D3D11_BIND_VERTEX_BUFFER);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
-				("Failed to initialize Spitfire vertex buffer. HRESULT: " + std::to_string(hr)).c_str());
+				("Failed to initialize Gameboy vertex buffer. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
 
 		hr = submesh.indexBuffer.init(m_device, meshComponent, D3D11_BIND_INDEX_BUFFER);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
-				("Failed to initialize Spitfire index buffer. HRESULT: " + std::to_string(hr)).c_str());
+				("Failed to initialize Gameboy index buffer. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
 

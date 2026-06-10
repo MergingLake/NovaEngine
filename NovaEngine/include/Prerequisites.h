@@ -10,6 +10,8 @@
 #include <unordered_map>
 #include <type_traits>
 #include <array>
+#include <algorithm>
+#include <cmath>
 
 // Libraries DirectX
 #include <d3d11.h>
