@@ -331,6 +331,12 @@
     <ClInclude Include="include\EngineUtilities\Utilities\EditorViewportPass.h">
       <Filter>include\Utilities</Filter>
     </ClInclude>
+    <ClInclude Include="include\ECS\LightComponent.h">
+      <Filter>include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ECS\MeshRendererComponent.h">
+      <Filter>include\ECS</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="bin\Skybox.hlsl">

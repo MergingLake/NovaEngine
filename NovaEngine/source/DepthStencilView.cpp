@@ -34,9 +34,9 @@ DepthStencilView::init(Device& device, Texture& depthStencil, DXGI_FORMAT format
 
 HRESULT
 DepthStencilView::init(Device& device,
-	Texture& depthStencil,
-	DXGI_FORMAT format,
-	D3D11_DSV_DIMENSION viewDimension) {
+											 Texture& depthStencil,
+											 DXGI_FORMAT format,
+											 D3D11_DSV_DIMENSION viewDimension) {
 	if (!device.m_device) {
 		ERROR("DepthStencilView", "init", "Device is null.");
 		return E_POINTER;
@@ -78,9 +78,9 @@ DepthStencilView::render(DeviceContext& deviceContext) {
 	}
 
 	deviceContext.m_deviceContext->ClearDepthStencilView(m_depthStencilView,
-		D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL,
-		1.0f,
-		0);
+																											 D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL,
+																											 1.0f,
+																											 0);
 }
 
 void

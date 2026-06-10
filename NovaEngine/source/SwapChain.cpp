@@ -35,6 +35,7 @@ SwapChain::init(Device& device,
   };
   unsigned int numFeatureLevels = ARRAYSIZE(featureLevels);
 
+  // Create the device
   for (unsigned int driverTypeIndex = 0; driverTypeIndex < numDriverTypes; driverTypeIndex++) {
     D3D_DRIVER_TYPE driverType = driverTypes[driverTypeIndex];
     hr = D3D11CreateDevice(nullptr,
@@ -60,6 +61,7 @@ SwapChain::init(Device& device,
     return hr;
   }
 
+  // Config the MSAA settings
   m_sampleCount = 4;
   hr = device.m_device->CheckMultisampleQualityLevels(DXGI_FORMAT_R8G8B8A8_UNORM,
     m_sampleCount,
@@ -160,8 +162,8 @@ SwapChain::present() {
   }
 }
 
-HRESULT SwapChain::resizeBuffers(UINT width, UINT height)
-{
+HRESULT
+SwapChain::resizeBuffers(unsigned int width, unsigned int height) {
   if (!m_swapChain) {
     ERROR("SwapChain", "resizeBuffers", "Swap chain is not initialized.");
     return E_POINTER;
@@ -193,7 +195,6 @@ HRESULT SwapChain::getBackBuffer(Texture& backBuffer)
   }
 
   // IMPORTANTE: backBuffer debe ser un ID3D11Texture2D* internamente
-  // (en tu init haces reinterpret_cast<void**>(&backBuffer)) :contentReference[oaicite:3]{index=3}
   HRESULT hr = m_swapChain->GetBuffer(
     0, __uuidof(ID3D11Texture2D),
     reinterpret_cast<void**>(&backBuffer)

@@ -19,6 +19,7 @@ public:
     rotation(),
     scale(),
     matrix(),
+    worldMatrix(),
     Component(ComponentType::TRANSFORM) {
   }
 
@@ -29,6 +30,7 @@ public:
     init() {
     scale.one();
     matrix = XMMatrixIdentity();
+		worldMatrix = XMMatrixIdentity();
   }
 
   /*
@@ -47,6 +49,7 @@ public:
 
     // Componer la matriz final en el orden: scale -> rotation -> translation
     matrix = scaleMatrix * rotationMatrix * translationMatrix;
+		worldMatrix = matrix;
   }
 
   /*
@@ -139,4 +142,5 @@ private:
 
 public:
   XMMATRIX matrix;    // Matriz de transformación
+	XMMATRIX worldMatrix; // Matriz de transformación final que se utiliza para renderizar el objeto, compuesta por la matriz de transformación y cualquier transformación adicional heredada de padres en la jerarquía de objetos.
 };

@@ -71,6 +71,8 @@ LightType {
 	Spot             ///< Emits a cone of light (like a flashlight).
 };
 
+constexpr int kMaxSceneLights = 8; ///< Maximum number of lights supported in the scene. This constant can be used to define array sizes and limits for light data in the rendering pipeline.
+
 /*
  * @struct LightData
  * @brief The LightData structure represents the properties of a light source in a 3D scene, including its type, color, intensity, direction, range, position, and spot angle. This structure is used to define the characteristics of light sources that contribute to the lighting and shading effects in the rendered scene.
@@ -133,6 +135,16 @@ CBPerFrame {
 
 	EU::Vector3 LightColor = EU::Vector3(1.0f, 1.0f, 1.0f);
 	float pad2 = 0.0f; // Pads LightColor (12 bytes) to 16 bytes.
+
+	EU::Vector3 LightPosition = EU::Vector3(0.0f, 3.0f, 0.0f);
+	int LightType = 0; // 4 bytes to align to 16 bytes. (Directional=0, Point=1, Spot=2)
+
+	XMFLOAT4 LightPositionsRanges[kMaxSceneLights]{}; // x,y,z = position, w = range. Array of vec4 to fit 8 lights (32 bytes).
+	XMFLOAT4 LightColorsTypes[kMaxSceneLights]{}; // x,y,z = color, w = type. Array of vec4 to fit 8 lights (32 bytes).
+	XMFLOAT4 LightDirectionsIntensities[kMaxSceneLights]{}; // x,y,z = direction, w = intensity. Array of vec4 to fit 8 lights (32 bytes).
+
+	int LightCount = 0; // 4 bytes to align to 16 bytes.
+	XMFLOAT3 pad3 = XMFLOAT3(0.0f, 0.0f, 0.0f); // Pads LightCount (4 bytes) to 16 bytes.
 };
 
 /*

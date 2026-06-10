@@ -3,6 +3,8 @@
 
 class Entity;
 class DeviceContext;
+class Camera;
+class RenderScene;
 
 /*
 	@class SceneGraph
@@ -88,6 +90,16 @@ public:
 	*/
 	void
 		render(DeviceContext& deviceContext);
+
+	/* 
+		@brief Gathers the necessary information from the scene graph to populate a RenderScene structure for rendering.
+		@details This method traverses the hierarchy of entities in the scene graph and collects information such as world transformations, materials, and mesh data to populate a RenderScene structure. The RenderScene can then be used by the rendering system to render the scene correctly based on the camera's perspective.
+		@param outScene A reference to a RenderScene structure that will be populated with information gathered from the scene graph.
+		@param camera The camera whose perspective will be used to gather information for rendering. This may include view and projection matrices, as well as any relevant camera properties that affect how entities are rendered in the scene.
+	*/
+	void
+		gatherRenderScene(RenderScene& outScene, const Camera& camera);
+
 	/* 
 		@brief Destroys the scene graph and releases associated resources.
 		@details This method should be called when the scene graph is no longer needed to clean up any resources and ensure proper memory management.

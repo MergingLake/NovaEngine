@@ -71,6 +71,12 @@ namespace EU {
 			return Vector3(x + other.x, y + other.y, z + other.z);
 		}
 
+		// Operador += (para acumuladores de tangentes/bitangentes)
+		Vector3& operator+=(const Vector3& other) {
+			x += other.x; y += other.y; z += other.z;
+			return *this;
+		}
+
 		/**
 		 * @brief Subtracts another vector from this vector.
 		 *

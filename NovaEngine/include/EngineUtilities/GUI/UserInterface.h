@@ -107,7 +107,8 @@ public:
     vec3Control(const std::string& label,
       float* values,
       float resetValues = 0.0f,
-      float columnWidth = 100.0f);
+      float columnWidth = 100.0f,
+      bool displayAsDegrees = false);
 
   /* 
     @brief Displays an inspector panel for a given actor in the GUI.
@@ -141,7 +142,8 @@ public:
 		@param actor A shared pointer to the actor for which to display the transform editing panel.
 	*/
   void
-    editTransform(const XMMATRIX& view, const XMMATRIX& projection, EU::TSharedPointer<Actor> actor);
+    editTransform(Camera& cam, Window& window, EU::TSharedPointer<Actor> actor);
+
   /* 
 		@brief Displays a toolbar for gizmo controls in the GUI.
 		@details This method can be called to set up a toolbar that provides controls for manipulating gizmos in the scene, such as translation, rotation, and scaling gizmos. It allows the user to switch between different gizmo modes and adjust their settings.
@@ -161,6 +163,51 @@ public:
     memcpy(dest, &temp, sizeof(float) * 16);
   }
 
+  /* 
+    @brief Draws the top ribbon of the studio interface.
+    @details This method can be called to render the top ribbon of the studio interface, which typically includes menu options, toolbars, and other controls for managing the application. It should be called during the GUI rendering phase to ensure that it is displayed correctly on the screen.
+	*/
+  void
+    drawStudioTopRibbon();
+
+  /* 
+    @brief Draws the viewport panel in the GUI.
+    @details This method can be called to render the viewport panel, which displays the rendered scene from the camera's perspective. It takes a shader resource view (SRV) of the viewport texture to display it within the panel.
+		@param viewportSRV A pointer to an ID3D11ShaderResourceView representing the texture of the viewport to be displayed in the panel.
+	*/
+  void
+    drawViewportPanel(ID3D11ShaderResourceView* viewportSRV);
+
+	/* 
+    @brief Draws a debug panel for rendering information in the GUI.
+    @details This method can be called to render a debug panel that displays various rendering-related information, such as the pre-shadow map, the final viewport output, and the shadow map. It takes shader resource views (SRVs) for each of these textures to display them within the panel for debugging purposes.
+    @param preShadowSRV A pointer to an ID3D11ShaderResourceView representing the pre-shadow map texture to be displayed in the debug panel.
+    @param finalViewportSRV A pointer to an ID3D11ShaderResourceView representing the final viewport output texture to be displayed in the debug panel.
+		@param shadowMapSRV A pointer to an ID3D11ShaderResourceView representing the shadow map texture to be displayed in the debug panel.
+	*/
+  void
+    drawRenderDebugPanel(ID3D11ShaderResourceView* preShadowSRV,
+      ID3D11ShaderResourceView* finalViewportSRV,
+      ID3D11ShaderResourceView* shadowMapSRV);
+
+	/* 
+    @brief Draws the dockspace for the editor interface in the GUI.
+		@details This method can be called to set up and render the dockspace for the editor interface, which allows for flexible arrangement of panels and windows within the editor. It should be called during the GUI rendering phase to ensure that it is displayed correctly on the screen and allows for docking and undocking of panels as needed.
+  */
+  void
+    drawEditorDockspace();
+
+  /**
+   * @brief Consume de forma atomica la solicitud de guardado emitida desde la UI.
+   * @return `true` una sola vez por peticion de guardado.
+   */
+  bool
+    consumeSaveSceneRequest() {
+    const bool requested = m_requestSaveScene;
+    m_requestSaveScene = false;
+    return requested;
+  }
+
 private:
   bool checkboxValue = true;
   bool checkboxValue2 = false;
@@ -169,7 +216,16 @@ private:
 
   bool show_exit_popup = false; // Variable de estado para el popup
 
+  bool m_requestSaveScene = false;
+  ImDrawList* m_viewportDrawList = nullptr;
+  bool m_viewportActive = false;
 
 public:
+  bool m_isUsingGizmo = false;
   int selectedActorIndex = -1;
+
+  ImVec2 m_viewportPos = ImVec2(0.0f, 0.0f);
+  ImVec2 m_viewportSize = ImVec2(0.0f, 0.0f);
+  bool m_viewportHovered = false;
+  bool m_viewportFocused = false;
 };

@@ -25,7 +25,7 @@ public:
 	Model3D(const std::string& name, ModelType modelType)
 		: IResource(name), m_modelType(modelType), lSdkManager(nullptr), lScene(nullptr) {
 		SetType(ResourceType::Model3D);
-		load(name);
+		//load(name);
 	}
 
 	/*
@@ -48,7 +48,7 @@ public:
 	/*
 	* @brief Destructor for the Model3D class, responsible for cleaning up any resources associated with the model.
 	*/
-	~Model3D() = default;
+	~Model3D() override;
 
 	/*
 	* @brief Loads the model data from the specified file path, using the appropriate loading method based on the model type.
@@ -105,6 +105,14 @@ public:
 		LoadFBXModel(const std::string& filePath);
 
 	/*
+	* @brief Loads an OBJ model from the specified file path, parsing the OBJ file to extract vertex and index data for the model's meshes.
+	* @param filePath The file path to the OBJ model to be loaded.
+	* @return A vector of MeshComponent instances representing the meshes extracted from the OBJ model. Each MeshComponent contains vertex and index data for a portion of the model, allowing for rendering and manipulation of the model's geometry.
+	*/
+	std::vector<MeshComponent>
+		LoadOBJModel(const std::string& filePath);
+
+	/*
 	* @brief Recursively processes an FBX node and its children to extract mesh data and populate the Model3D instance with MeshComponent instances.
 	* @param node A pointer to the FBX node to be processed. This method will traverse the node's children and extract mesh data from any nodes that contain mesh information, creating MeshComponent instances for each mesh found and adding them to the Model3D instance.
 	* @details The method checks if the node contains a mesh, and if so, it processes the mesh data to create a MeshComponent. It then recursively calls itself for each child node, allowing for traversal of the entire FBX scene graph to extract all relevant mesh data.
@@ -135,9 +143,43 @@ public:
 	std::vector<std::string>
 		GetTextureFileNames() const { return textureFileNames; }
 private:
+	/*
+	* @brief Retrieves the file path for the binary cache of the model, which can be used to store and load preprocessed model data for faster loading times.
+	* @return A string representing the file path to the binary cache for the model. This path is typically derived from the original model file path, with a different extension or directory to indicate that it is a cached version of the model data.
+	*/
+	std::string
+		GetBinaryCachePath() const;
+
+	/*
+	* @brief Checks if the binary cache for the model is up to date compared to the original model file, determining whether the cached data can be used for loading or if it needs to be regenerated.
+	* @param sourcePath The file path to the original model file that was loaded. This is used to compare against the binary cache file to determine if the cache is still valid.
+	* @param cachePath The file path to the binary cache file for the model. This is used to check if the cache exists and if it is up to date compared to the source model file.
+	* @return True if the binary cache is up to date and can be used for loading, false if the cache is outdated or does not exist and needs to be regenerated.
+	*/
+	bool
+		IsBinaryCacheUpToDate(const std::string& sourcePath, const std::string& cachePath) const;
+
+	/*
+	* @brief Loads the model data from a binary cache file, which contains preprocessed model data for faster loading times. This method is used when the binary cache is determined to be up to date and can be used instead of loading and processing the original model file.
+	* @param cachePath The file path to the binary cache file for the model. This file contains preprocessed model data that can be loaded directly to populate the Model3D instance with meshes and textures without needing to parse the original model file.
+	* @return True if the binary cache was successfully loaded and the model data was populated from the cache, false if there was an error loading the cache or if the cache is not valid.
+	*/
+	bool
+		LoadBinaryCache(const std::string& cachePath);
+	
+	/*
+	* @brief Saves the model data to a binary cache file, which can be used for faster loading times in the future. This method is called after successfully loading and processing the original model file to create a cached version of the model data for subsequent loads.
+	* @param cachePath The file path where the binary cache for the model should be saved. This file will contain preprocessed model data that can be loaded directly in the future to populate the Model3D instance without needing to parse the original model file again.
+	* @return True if the binary cache was successfully saved, false if there was an error during the saving process.
+	*/
+	bool
+		SaveBinaryCache(const std::string& cachePath) const;
+
+private:
 	FbxManager* lSdkManager;
 	FbxScene* lScene;
 	std::vector<std::string> textureFileNames;
+
 public:
 	ModelType m_modelType;
 	std::vector<MeshComponent> m_meshes;
