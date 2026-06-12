@@ -158,6 +158,15 @@
     <ClCompile Include="source\EditorViewportPass.cpp">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="source\Rendering\MaterialInstance.cpp">
+      <Filter>source\Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Rendering\RenderScene.cpp">
+      <Filter>source\Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Rendering\DeferredRenderer.cpp">
+      <Filter>source\Rendering</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CLInclude Include="resource.h">
@@ -337,6 +346,12 @@
     <ClInclude Include="include\ECS\MeshRendererComponent.h">
       <Filter>include\ECS</Filter>
     </ClInclude>
+    <ClInclude Include="include\Rendering\ISceneRenderer.h">
+      <Filter>include\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Rendering\DeferredRenderer.h">
+      <Filter>include\Rendering</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="bin\Skybox.hlsl">
@@ -346,6 +361,9 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="bin\PBRShader.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="bin\ShadowMap.hlsl">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

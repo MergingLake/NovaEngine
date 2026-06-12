@@ -235,8 +235,8 @@ BaseApp::init() {
 			return hr;
 		}
 
-		HRESULT emissiveHr = m_EmissiveSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Emissive", PNG);
-		if (FAILED(emissiveHr)) {
+		hr = m_EmissiveSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Emissive", PNG);
+		if (FAILED(hr)) {
 			MESSAGE("Main", "InitDevice", "SciFiToad emissive texture not found. Continuing without emissive map.");
 		}
 
@@ -269,28 +269,28 @@ BaseApp::init() {
 			return hr;
 		}
 
-		hr = m_gameboyNormalSRV.init(m_device, "Models/Gameboy_n", PNG);
+		hr = m_gameboyNormalSRV.init(m_device, "Textures/Gameboy/Gameboy_n", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
 				("Failed to initialize gameboy normal texture. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
 
-		hr = m_gameboyMetallicSRV.init(m_device, "Models/Gameboy_m", PNG);
+		hr = m_gameboyMetallicSRV.init(m_device, "Textures/Gameboy/Gameboy_m", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
 				("Failed to initialize gameboy metallic texture. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
 
-		hr = m_gameboyRoughnessSRV.init(m_device, "Models/gameboy_r", PNG);
+		hr = m_gameboyRoughnessSRV.init(m_device, "Textures/Gameboy/gameboy_r", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
 				("Failed to initialize gameboy roughness texture. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
 
-		hr = m_gameboyAOSRV.init(m_device, "Models/gameboy_ao", PNG);
+		hr = m_gameboyAOSRV.init(m_device, "Textures/Gameboy/gameboy_ao", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
 				("Failed to initialize gameboy AO texture. HRESULT: " + std::to_string(hr)).c_str());
@@ -579,6 +579,8 @@ void BaseApp::update(float deltaTime)
 			m_editorViewportResizePending = true;
 			m_pendingViewportWidth = desiredW;
 			m_pendingViewportHeight = desiredH;
+
+			m_viewportResizeStableFrames = 0; // Reinicia estabilidad para evitar multiples triggers
 		}
 	}
 	

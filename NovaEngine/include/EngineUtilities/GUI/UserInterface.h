@@ -4,6 +4,7 @@
 
 class Viewport;
 class Window;
+class Camera;
 class Device;
 class DeviceContext;
 class Actor;
