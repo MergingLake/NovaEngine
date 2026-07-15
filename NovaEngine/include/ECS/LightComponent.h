@@ -70,6 +70,18 @@ public:
 	*/
 	bool canCastShadow() const { return m_castShadow; }
 
+	/*
+	 * @brief Crea una copia profunda del LightComponent.
+	 */
+	EU::TSharedPointer<Component> clone() const override {
+		LightComponent* clonedRaw = new LightComponent();
+
+		clonedRaw->getLightData() = this->getLightData();
+		clonedRaw->setCastShadow(this->canCastShadow());
+
+		return EU::TSharedPointer<Component>(clonedRaw);
+	}
+
 private:
 	LightData m_light;
 	bool m_castShadow = false;

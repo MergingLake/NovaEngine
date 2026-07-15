@@ -143,6 +143,13 @@ public:
   void
     renderShadow(DeviceContext& deviceContext);
 
+  /**
+   * @brief Clona el Actor actual, creando copias profundas de sus componentes y recursos.
+   * @param device Dispositivo necesario para recrear buffers.
+   * @return Un nuevo Actor idéntico pero independiente en memoria.
+   */
+  EU::TSharedPointer<Actor> clone(Device& device);
+
 private:
   std::vector<MeshComponent> m_meshes;   ///< Conjunto de componentes de malla del actor.
   std::vector<Texture> m_textures;       ///< Texturas aplicadas al actor.

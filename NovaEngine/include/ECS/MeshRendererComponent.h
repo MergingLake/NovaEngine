@@ -132,6 +132,20 @@ public:
 	*/
 	void setCastShadow(bool value) { m_castShadow = value; }
 
+	/*
+	 * @brief Crea una copia profunda del MeshRendererComponent, compartiendo los recursos gráficos pesados.
+	 */
+	EU::TSharedPointer<Component> clone() const override {
+		MeshRendererComponent* clonedRaw = new MeshRendererComponent();
+
+		clonedRaw->setMesh(this->getMesh());
+		clonedRaw->setMaterialInstances(this->getMaterialInstances());
+		clonedRaw->setVisible(this->isVisible());
+		clonedRaw->setCastShadow(this->canCastShadow());
+
+		return EU::TSharedPointer<Component>(clonedRaw);
+	}
+
 private:
 	Mesh* m_mesh = nullptr;
 	MaterialInstance* m_materialInstance = nullptr;

@@ -106,6 +106,9 @@ Actor::render(DeviceContext& deviceContext) {
 		}
 		// else: se queda null
 		deviceContext.DrawIndexed(m_meshes[i].m_numIndex, 0, 0);
+
+		g_Stats.drawCalls++; // Incrementa cada vez que dibujas una sub-malla
+		deviceContext.DrawIndexed(m_meshes[i].m_numIndex, 0, 0);
 	}
 }
 
@@ -167,4 +170,31 @@ Actor::setMesh(Device& device, std::vector<MeshComponent> meshes) {
 			m_indexBuffers.push_back(indexBuffer);
 		}
 	}
+}
+
+EU::TSharedPointer<Actor> Actor::clone(Device& device) {
+	// 1. Creamos el nuevo actor (Esto inicializa sus CBuffers y estados básicos)
+	auto clonedActor = EU::MakeShared<Actor>(device);
+	clonedActor->setName(this->m_name + " (Copy)");
+	clonedActor->setCastShadow(this->castShadow);
+
+	// 2. Limpiar los componentes por defecto que crea el constructor de Actor()
+	// Nota: Si m_components es privado en Entity, necesitarás crear un método clearComponents() en Entity.h
+	clonedActor->m_components.clear();
+
+	// 3. Clonar todos los componentes dinámicamente usando polimorfismo
+	for (const auto& comp : this->m_components) {
+		if (comp) {
+			clonedActor->addComponent(comp->clone());
+		}
+	}
+
+	// 4. Recrear los buffers de DirectX para las mallas
+	// Usamos tu función setMesh existente, la cual inicializa nuevos Vertex/Index buffers seguros
+	clonedActor->setMesh(device, this->m_meshes);
+
+	// 5. Asignar texturas (Asumo que tu clase Texture maneja bien el copiado de los SRVs)
+	clonedActor->setTextures(this->m_textures);
+
+	return clonedActor;
 }

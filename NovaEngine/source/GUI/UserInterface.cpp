@@ -1,4 +1,4 @@
-#include "EngineUtilities\GUI\UserInterface.h"
+#include "EngineUtilities/GUI/UserInterface.h"
 #include "Viewport.h"
 #include "Window.h"
 #include "Device.h"
@@ -10,14 +10,33 @@
 #include "Rendering\Mesh.h"
 #include "Rendering\Material.h"
 #include "Rendering\MaterialInstance.h"
+#include "Texture.h"
 #include "EngineUtilities\Utilities\Camera.h"
-
 //#include "imgui_internal.h"
 static ImGuizmo::OPERATION mCurrentGizmoOperation(ImGuizmo::TRANSLATE);
 static ImGuizmo::MODE mCurrentGizmoMode(ImGuizmo::LOCAL);
 
 namespace {
 	const char* GetLightTypeLabel(LightType type);
+
+	struct DebugTextureItem {
+		const char* label;
+		const char* channels;
+		ID3D11ShaderResourceView* srv;
+	};
+
+	struct GBufferChannelItem {
+		const char* label;
+		const char* channels;
+		ID3D11ShaderResourceView* srv;
+		ID3D11ShaderResourceView* previewSRV;
+		int iconType;
+		int debugViewMode;
+	};
+
+	ID3D11ShaderResourceView* GetTextureSRV(Texture* texture) {
+		return texture ? texture->m_textureFromImg : nullptr;
+	}
 
 	ImU32 AccentU32(const ImVec4& color) {
 		return ImGui::ColorConvertFloat4ToU32(color);
@@ -29,6 +48,97 @@ namespace {
 
 	float DegToRad(float degrees) {
 		return XMConvertToRadians(degrees);
+	}
+
+	void DrawDebugTextureEntry(const DebugTextureItem& item, int index, int& selectedView, float thumbnailHeight) {
+		ImGui::PushID(index);
+		if (ImGui::Selectable(item.label, selectedView == index, 0, ImVec2(0.0f, 20.0f))) {
+			selectedView = index;
+		}
+
+		if (item.channels != nullptr && item.channels[0] != '\0') {
+			ImGui::TextDisabled("%s", item.channels);
+		}
+
+		if (item.srv) {
+			const float thumbnailWidth = thumbnailHeight * 1.6f;
+			ImGui::Image((ImTextureID)item.srv, ImVec2(thumbnailWidth, thumbnailHeight));
+		}
+		else {
+			ImGui::Dummy(ImVec2(thumbnailHeight * 1.6f, thumbnailHeight));
+			ImGui::SameLine(0.0f, 0.0f);
+			ImGui::TextDisabled("Unavailable");
+		}
+
+		ImGui::PopID();
+	}
+
+	void DrawGBufferChannelIcon(ImDrawList* drawList, const ImVec2& center, float radius, int iconType, ImU32 color) {
+		drawList->AddCircle(center, radius, color, 32, 2.0f);
+
+		switch (iconType) {
+		case 0:
+			drawList->AddCircleFilled(ImVec2(center.x - radius * 0.25f, center.y - radius * 0.2f), radius * 0.32f, color, 16);
+			drawList->AddCircleFilled(ImVec2(center.x + radius * 0.28f, center.y + radius * 0.18f), radius * 0.24f, color, 16);
+			break;
+		case 1:
+			drawList->AddLine(ImVec2(center.x + radius * 0.18f, center.y - radius * 0.72f), ImVec2(center.x - radius * 0.18f, center.y - radius * 0.08f), color, 2.0f);
+			drawList->AddLine(ImVec2(center.x - radius * 0.18f, center.y - radius * 0.08f), ImVec2(center.x + radius * 0.20f, center.y - radius * 0.08f), color, 2.0f);
+			drawList->AddLine(ImVec2(center.x + radius * 0.20f, center.y - radius * 0.08f), ImVec2(center.x - radius * 0.18f, center.y + radius * 0.72f), color, 2.0f);
+			break;
+		case 2:
+			for (int y = -1; y <= 1; ++y) {
+				for (int x = -1; x <= 1; ++x) {
+					drawList->AddCircleFilled(ImVec2(center.x + x * radius * 0.42f, center.y + y * radius * 0.42f), radius * 0.10f, color, 8);
+				}
+			}
+			break;
+		case 3:
+			drawList->AddLine(ImVec2(center.x - radius * 0.45f, center.y + radius * 0.35f), ImVec2(center.x + radius * 0.45f, center.y - radius * 0.35f), color, 2.0f);
+			drawList->AddLine(ImVec2(center.x + radius * 0.10f, center.y - radius * 0.35f), ImVec2(center.x + radius * 0.45f, center.y - radius * 0.35f), color, 2.0f);
+			drawList->AddLine(ImVec2(center.x + radius * 0.45f, center.y - radius * 0.35f), ImVec2(center.x + radius * 0.45f, center.y), color, 2.0f);
+			drawList->AddLine(ImVec2(center.x - radius * 0.45f, center.y + radius * 0.35f), ImVec2(center.x - radius * 0.45f, center.y), color, 2.0f);
+			drawList->AddLine(ImVec2(center.x - radius * 0.45f, center.y + radius * 0.35f), ImVec2(center.x - radius * 0.10f, center.y + radius * 0.35f), color, 2.0f);
+			break;
+		case 4:
+			for (float x = -0.55f; x <= 0.55f; x += 0.25f) {
+				drawList->AddLine(ImVec2(center.x + radius * x, center.y - radius * 0.70f), ImVec2(center.x + radius * x, center.y + radius * 0.70f), color, 1.4f);
+			}
+			break;
+		case 5:
+			drawList->AddRectFilled(ImVec2(center.x - radius * 0.52f, center.y - radius * 0.52f), center, color);
+			drawList->AddRectFilled(center, ImVec2(center.x + radius * 0.52f, center.y + radius * 0.52f), color);
+			break;
+		default:
+			drawList->AddCircleFilled(center, radius * 0.42f, color, 16);
+			break;
+		}
+	}
+
+	void DrawGBufferChannelEntry(const GBufferChannelItem& item, int index, int& selectedView) {
+		ImGui::PushID(index);
+
+		const float rowHeight = 38.0f;
+		const ImVec2 rowSize(ImGui::GetContentRegionAvail().x, rowHeight);
+		const bool selected = selectedView == index;
+		if (ImGui::Selectable("##GBufferChannel", selected, ImGuiSelectableFlags_SpanAvailWidth, rowSize)) {
+			selectedView = index;
+		}
+
+		ImVec2 min = ImGui::GetItemRectMin();
+		ImVec2 max = ImGui::GetItemRectMax();
+		ImDrawList* drawList = ImGui::GetWindowDrawList();
+		ImU32 iconColor = item.srv ? IM_COL32(220, 220, 225, 255) : IM_COL32(120, 120, 126, 180);
+		ImU32 textColor = item.srv ? ImGui::GetColorU32(ImGuiCol_Text) : ImGui::GetColorU32(ImGuiCol_TextDisabled);
+
+		if (selected) {
+			drawList->AddRectFilled(min, max, IM_COL32(48, 78, 130, 105), 6.0f);
+		}
+
+		DrawGBufferChannelIcon(drawList, ImVec2(min.x + 18.0f, min.y + rowHeight * 0.5f), 12.5f, item.iconType, iconColor);
+		drawList->AddText(ImVec2(min.x + 42.0f, min.y + 10.0f), textColor, item.label);
+
+		ImGui::PopID();
 	}
 
 	void DrawInspectorPill(const char* text, const ImVec4& color) {
@@ -185,15 +295,14 @@ namespace {
 		}
 	}
 }
-
 void
 GUI::init(Window& window, Device& device, DeviceContext& deviceContext) {
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
-	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;// Enable Keyboard Controls
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;// Enable Docking
 	// Setup Dear ImGui style
 	ImGui::StyleColorsDark();
 
@@ -224,13 +333,22 @@ GUI::update(Viewport& viewport, Window& window) {
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 
+	m_viewportVisibleThisFrame = false;
+	m_viewportDrawList = nullptr;
+	m_viewportWindow = nullptr;
+	m_viewportHovered = false;
+	m_viewportActive = false;
+	m_viewportFocused = false;
 	ImGuizmo::BeginFrame();
 	ImGuiIO& io = ImGui::GetIO();
-	if (io.KeyCtrl && ImGui::IsKeyPressed('S')) {
+	if (io.KeyCtrl && ImGui::IsKeyPressed((int)'S')) {
 		m_requestSaveScene = true;
 	}
 	ImGuizmo::SetOrthographic(false);
 	//ImGuizmo::SetRect(0, 0, (float)window.m_width, (float)window.m_height);
+
+	drawLogConsole();  // Dibuja la ventana de logs
+	drawStatsPanel();  // Dibuja la ventana de FPS/DrawCalls
 
 	// In Program always
 	drawStudioTopRibbon();
@@ -366,7 +484,7 @@ GUI::appleLiquidStyle(float opacity, ImVec4 accent) {
 	ImGuiStyle& style = ImGui::GetStyle();
 	ImVec4* colors = style.Colors;
 
-	// Geometría suave tipo macOS
+	// Geometria suave tipo macOS
 	style.WindowRounding = 14.0f;
 	style.ChildRounding = 14.0f;
 	style.PopupRounding = 14.0f;
@@ -385,13 +503,13 @@ GUI::appleLiquidStyle(float opacity, ImVec4 accent) {
 	style.ItemSpacing = ImVec2(8, 8);
 	style.ItemInnerSpacing = ImVec2(8, 6);
 
-	const float o = opacity;                 // opacidad del “cristal”
+	const float o = opacity;                 // opacidad del cristal
 	const ImVec4 txt = ImVec4(1, 1, 1, 0.95f);     // texto claro
-	const ImVec4 pane = ImVec4(0.16f, 0.16f, 0.18f, o); // panel “vidrioso” oscuro
+	const ImVec4 pane = ImVec4(0.16f, 0.16f, 0.18f, o); // panel vidrioso oscuro
 	const ImVec4 paneHi = ImVec4(0.20f, 0.20f, 0.22f, o);
 	const ImVec4 paneLo = ImVec4(0.13f, 0.13f, 0.15f, o * 0.85f);
 
-	// Colores base “glass”
+	// Colores base glass
 	colors[ImGuiCol_Text] = txt;
 	colors[ImGuiCol_TextDisabled] = ImVec4(1, 1, 1, 0.45f);
 	colors[ImGuiCol_WindowBg] = pane;     // importante: con alpha
@@ -452,59 +570,6 @@ GUI::appleLiquidStyle(float opacity, ImVec4 accent) {
 	colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1, 1, 1, 0.30f);
 	colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0, 0, 0, 0.20f);
 	colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0, 0, 0, 0.35f);
-}
-
-
-void
-GUI::ToolBar() {
-	if (ImGui::BeginMainMenuBar()) {
-		if (ImGui::BeginMenu("File")) {
-			if (ImGui::MenuItem("New")) {
-				// Accion para "New"
-			}
-			if (ImGui::MenuItem("Open")) {
-				// Accion para "Open"
-			}
-			if (ImGui::MenuItem("Save")) {
-				// Accion para "Save"
-			}
-			if (ImGui::MenuItem("Exit")) {
-				// Accion para "Exit"
-				show_exit_popup = true;
-				ImGui::OpenPopup("Exit?");
-				//closeApp();
-			}
-			ImGui::EndMenu();
-		}
-		if (ImGui::BeginMenu("Edit")) {
-			if (ImGui::MenuItem("Undo")) {
-				// Accion para "Undo"
-			}
-			if (ImGui::MenuItem("Redo")) {
-				// Accion para "Redo"
-			}
-			if (ImGui::MenuItem("Cut")) {
-				// Accion para "Cut"
-			}
-			if (ImGui::MenuItem("Copy")) {
-				// Accion para "Copy"
-			}
-			if (ImGui::MenuItem("Paste")) {
-				// Accion para "Paste"
-			}
-			ImGui::EndMenu();
-		}
-		if (ImGui::BeginMenu("Tools")) {
-			if (ImGui::MenuItem("Options")) {
-				// Accion para "Options"
-			}
-			if (ImGui::MenuItem("Settings")) {
-				// Accion para "Settings"
-			}
-			ImGui::EndMenu();
-		}
-		ImGui::EndMainMenuBar();
-	}
 }
 
 void
@@ -693,7 +758,18 @@ GUI::inspectorGeneral(EU::TSharedPointer<Actor> actor) {
 	if (hasLightComponent && BeginInspectorSection("Light")) {
 		LightData& light = lightComponent->getLightData();
 		if (BeginInspectorPropertyTable("##LightProperties")) {
-			DrawPropertyValueText("Type", GetLightTypeLabel(light.type));
+			static const char* kLightTypes[] = { "Directional", "Point" };
+			int currentLightType = static_cast<int>(light.type);
+			if (currentLightType > static_cast<int>(LightType::Point)) {
+				currentLightType = static_cast<int>(LightType::Point);
+			}
+			DrawPropertyLabel("Type");
+			if (ImGui::Combo("##LightType", &currentLightType, kLightTypes, IM_ARRAYSIZE(kLightTypes))) {
+				light.type = static_cast<LightType>(currentLightType);
+				if (light.type == LightType::Point && light.range <= 0.0f) {
+					light.range = 12.0f;
+				}
+			}
 			bool castShadow = lightComponent->canCastShadow();
 			DrawPropertyToggle("Cast Shadow", "##LightCastShadow", &castShadow);
 			lightComponent->setCastShadow(castShadow);
@@ -701,7 +777,7 @@ GUI::inspectorGeneral(EU::TSharedPointer<Actor> actor) {
 			ImGui::ColorEdit3("##LightColor", &light.color.x);
 			DrawPropertyLabel("Intensity");
 			ImGui::SliderFloat("##LightIntensity", &light.intensity, 0.0f, 10.0f);
-			if (light.type == LightType::Directional || light.type == LightType::Spot) {
+			if (light.type == LightType::Spot) {
 				DrawPropertyLabel("Direction");
 				ImGui::SliderFloat3("##LightDirection", &light.direction.x, -1.0f, 1.0f);
 			}
@@ -796,6 +872,8 @@ GUI::outliner(const std::vector<EU::TSharedPointer<Actor>>& actors) {
 
 void GUI::editTransform(Camera& cam, Window& window, EU::TSharedPointer<Actor> actor)
 {
+	(void)window;
+	if (!m_viewportVisibleThisFrame) return;
 	if (actor.isNull()) return;
 	auto transform = actor->getComponent<Transform>();
 	if (transform.isNull()) return;
@@ -824,15 +902,13 @@ void GUI::editTransform(Camera& cam, Window& window, EU::TSharedPointer<Actor> a
 	ImGuizmo::RecomposeMatrixFromComponents(pos, gizmoRotation, sca, mArr);
 
 	float vArr[16], pArr[16];
-	ToFloatArray(cam.getView(), vArr);
-	ToFloatArray(cam.getProj(), pArr);
+	toFloatArray(cam.getView(), vArr);
+	toFloatArray(cam.getProj(), pArr);
 
 	ImGuizmo::SetOrthographic(false);
 
-	if (m_viewportDrawList)
-		ImGuizmo::SetDrawlist(m_viewportDrawList);
-	else
-		ImGuizmo::SetDrawlist(ImGui::GetForegroundDrawList());
+	ImGuizmo::SetDrawlist(ImGui::GetForegroundDrawList());
+	ImGuizmo::SetAlternativeWindow(m_viewportWindow);
 
 	ImGuizmo::SetID(0);
 	ImGuizmo::SetGizmoSizeClipSpace(0.12f);
@@ -840,19 +916,26 @@ void GUI::editTransform(Camera& cam, Window& window, EU::TSharedPointer<Actor> a
 	ImGuizmo::SetRect(rectX, rectY, rectW, rectH);
 
 	float snapValue = 25.0f;
-	if (mCurrentGizmoOperation == ImGuizmo::ROTATE) snapValue = 1.0f;
+	if (mCurrentGizmoOperation == ImGuizmo::ROTATE)    snapValue = 1.0f;
 	if (mCurrentGizmoOperation == ImGuizmo::TRANSLATE) snapValue = 0.5f;
 
 	float snap[3] = { snapValue, snapValue, snapValue };
-
 	bool useSnap = ImGui::GetIO().KeyCtrl;
-
 	ImGuizmo::MODE activeGizmoMode = mCurrentGizmoMode;
 	if (mCurrentGizmoOperation == ImGuizmo::SCALE) {
 		activeGizmoMode = ImGuizmo::LOCAL;
 	}
 
-	ImGuizmo::Manipulate(vArr, pArr, mCurrentGizmoOperation, activeGizmoMode, mArr, nullptr, useSnap ? snap : nullptr);
+	ImGuizmo::Manipulate(
+		vArr,
+		pArr,
+		mCurrentGizmoOperation,
+		activeGizmoMode,
+		mArr,
+		nullptr,
+		useSnap ? snap : nullptr
+	);
+	ImGuizmo::SetAlternativeWindow(nullptr);
 
 	m_isUsingGizmo = ImGuizmo::IsUsing();
 
@@ -871,39 +954,33 @@ void GUI::drawGizmoToolbar()
 {
 	//ImGui::SetNextWindowPos(ImVec2(300, 150), ImGuiCond_Always);
 	ImGui::SetNextWindowBgAlpha(0.0f); // 0 = transparente total
-	
+
 	ImGuiWindowFlags window_flags =
 		ImGuiWindowFlags_NoDecoration |
-		ImGuiWindowFlags_AlwaysAutoResize |
 		ImGuiWindowFlags_AlwaysAutoResize |/*
 		ImGuiWindowFlags_NoMove |
-		ImGuiWindowFlags_NoSavedSettings |
 		ImGuiWindowFlags_NoSavedSettings |*/
 		ImGuiWindowFlags_NoFocusOnAppearing |
 		ImGuiWindowFlags_NoNav;
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 
-	if (ImGui::Begin("GizmoToolBar", nullptr, window_flags)) {
+	if (ImGui::Begin("GizmoToolBar", nullptr, window_flags))
+	{
+		auto buttonMode = [&](const char* label, ImGuizmo::OPERATION op, const char* shortcut)
+			{
+				bool isActive = (mCurrentGizmoOperation == op);
+				if (isActive)
+					ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.4f, 0.8f, 1.0f));
 
-		// Estilo de los botones (más profesional)
-		auto buttonMode = [&](const char* label, ImGuizmo::OPERATION op, const char* shortcut) {
-			bool isActive = (mCurrentGizmoOperation == op);
-			if (isActive) {
-				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.4f, 0.8f, 1.0f));
-			}
+				if (ImGui::Button(label))
+					mCurrentGizmoOperation = op;
 
-			if (ImGui::Button(label)) {
-				mCurrentGizmoOperation = op;
-			}
+				if (ImGui::IsItemHovered())
+					ImGui::SetTooltip("%s (%s)", label, shortcut);
 
-			// Tooltip para que el usuario vea el acceso rápido
-			if (ImGui::IsItemHovered()) {
-				ImGui::SetTooltip("%s (%s)", label, shortcut);
-			}
-
-			if (isActive) ImGui::PopStyleColor();
-			ImGui::SameLine();
+				if (isActive) ImGui::PopStyleColor();
+				ImGui::SameLine();
 			};
 
 		buttonMode("T", ImGuizmo::TRANSLATE, "W");
@@ -981,12 +1058,21 @@ void GUI::drawStudioTopRibbon()
 
 			if (ImGui::BeginMenu("Edit"))
 			{
-				ImGui::MenuItem("Undo");
-				ImGui::MenuItem("Redo");
+				ImGui::MenuItem("Undo", "Ctrl+Z");
+				ImGui::MenuItem("Redo", "Ctrl+Y");
 				ImGui::Separator();
-				ImGui::MenuItem("Cut");
-				ImGui::MenuItem("Copy");
-				ImGui::MenuItem("Paste");
+				if (ImGui::MenuItem("Cut", "Ctrl+X")) {
+					m_requestCut = true;
+				}
+				if (ImGui::MenuItem("Copy", "Ctrl+C")) {
+					m_requestCopy = true;
+				}
+				if (ImGui::MenuItem("Paste", "Ctrl+V")) {
+					m_requestPaste = true;
+				}
+				if (ImGui::MenuItem("Duplicate", "Ctrl+D")) {
+					m_requestDuplicate = true;
+				}
 				ImGui::EndMenu();
 			}
 
@@ -1153,9 +1239,9 @@ void GUI::drawStudioTopRibbon()
 		}
 		ImGui::SameLine();
 
-		if (ribbonButton("##Terrain", "Terrain", "Edit", btnSize, false))
+		if (ribbonButton("##LightActor", "Light", "Actor", btnSize, false))
 		{
-			// abrir terrain tools
+			m_requestCreateLightActor = true;
 		}
 		ImGui::SameLine();
 
@@ -1196,8 +1282,14 @@ void GUI::drawStudioTopRibbon()
 	ImGui::PopStyleVar(3);
 }
 
-void GUI::drawViewportPanel(ID3D11ShaderResourceView* viewportSRV)
+void GUI::drawViewportPanel(ID3D11ShaderResourceView* viewportSRV,
+	const std::vector<EU::TSharedPointer<Actor>>& actors,
+	Camera& camera,
+	Window& window,
+	EU::TSharedPointer<Actor> selectedActor,
+	ID3D11ShaderResourceView* lightIconSRV)
 {
+	(void)window;
 	ImGuiWindowFlags flags =
 		ImGuiWindowFlags_NoScrollbar |
 		ImGuiWindowFlags_NoScrollWithMouse |
@@ -1208,7 +1300,9 @@ void GUI::drawViewportPanel(ID3D11ShaderResourceView* viewportSRV)
 
 	if (ImGui::Begin("Viewport", nullptr, flags))
 	{
-		m_viewportDrawList = ImGui::GetWindowDrawList();
+		ImDrawList* viewportWindowDrawList = ImGui::GetWindowDrawList();
+		m_viewportWindow = ImGui::GetCurrentWindow();
+		m_viewportVisibleThisFrame = true;
 
 		ImVec2 panelMin = ImGui::GetCursorScreenPos();
 		ImVec2 panelSize = ImGui::GetContentRegionAvail();
@@ -1225,7 +1319,7 @@ void GUI::drawViewportPanel(ID3D11ShaderResourceView* viewportSRV)
 			ImGui::InvisibleButton("##ViewportSurface", panelSize);
 			ImVec2 itemMin = ImGui::GetItemRectMin();
 			ImVec2 itemMax = ImGui::GetItemRectMax();
-			ImDrawList* drawList = ImGui::GetWindowDrawList();
+			ImDrawList* drawList = viewportWindowDrawList;
 
 			drawList->AddRectFilled(itemMin, itemMax, IM_COL32(20, 20, 25, 255));
 			drawList->AddText(
@@ -1239,72 +1333,296 @@ void GUI::drawViewportPanel(ID3D11ShaderResourceView* viewportSRV)
 		ImVec2 itemMax = ImGui::GetItemRectMax();
 		m_viewportPos = itemMin;
 		m_viewportSize = ImVec2(itemMax.x - itemMin.x, itemMax.y - itemMin.y);
+		m_viewportDrawList = viewportWindowDrawList;
 
 		// IMPORTANTE: el hover/active del item imagen
 		m_viewportHovered = ImGui::IsItemHovered();
 		m_viewportActive = ImGui::IsItemActive();
 		m_viewportFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+
+		ImDrawList* gizmoDrawList = m_viewportDrawList;
+		m_viewportDrawList = ImGui::GetForegroundDrawList();
+		drawLightIcons(actors, camera, lightIconSRV);
+		m_viewportDrawList = gizmoDrawList;
+
+		// --- INPUT DE LA CAMARA DE EDITOR (ESTILO DCC) ---
+		ImGuiIO& io = ImGui::GetIO();
+
+		// Solo procesar input de cámara si el mouse está sobre el viewport 
+		// y NO estamos usando el Gizmo de transformación
+		if (m_viewportHovered && !ImGuizmo::IsUsing()) {
+
+			// Zoom (Scroll)
+			if (io.MouseWheel != 0.0f) {
+				camera.zoom(io.MouseWheel);
+			}
+
+			// Requiere mantener la tecla ALT presionada (Estilo Maya/Unity/Unreal)
+			if (io.KeyShift) {
+				// Orbitar (Alt + Click Izquierdo)
+				if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+					// Ajustar sensibilidad a tu gusto
+					camera.orbit(io.MouseDelta.x * 0.005f, io.MouseDelta.y * 0.005f);
+				}
+
+				// Pan (Alt + Click Central)
+				if (ImGui::IsMouseDown(ImGuiMouseButton_Middle)) {
+					camera.pan(io.MouseDelta.x, io.MouseDelta.y);
+				}
+			}
+		}
+
+		// Focus (Tecla F)
+		if (m_viewportHovered && ImGui::IsKeyPressed((int)'F')) {
+			if (!selectedActor.isNull()) {
+				auto transform = selectedActor->getComponent<Transform>();
+				if (!transform.isNull()) {
+					// Focusear en la posición del actor, con una distancia arbitraria
+					camera.focusOn(transform->getPosition(), 10.0f);
+				}
+			}
+		}
+
+		editTransform(camera, window, selectedActor);
 	}
 	ImGui::End();
 
 	ImGui::PopStyleVar();
 }
 
-void GUI::drawRenderDebugPanel(ID3D11ShaderResourceView* preShadowSRV,
-	ID3D11ShaderResourceView* finalViewportSRV,
-	ID3D11ShaderResourceView* shadowMapSRV) {
-	ImGui::Begin("Render Debug");
+void GUI::drawLightIcons(const std::vector<EU::TSharedPointer<Actor>>& actors,
+	Camera& camera,
+	ID3D11ShaderResourceView* lightIconSRV)
+{
+	if (!m_viewportDrawList || m_viewportSize.x <= 1.0f || m_viewportSize.y <= 1.0f) {
+		return;
+	}
 
-	struct DebugViewItem {
-		const char* label;
-		ID3D11ShaderResourceView* srv;
-	};
+	const ImVec2 iconSize(26.0f, 26.0f);
 
-	DebugViewItem items[] = {
-		{ "Pre-Shadow", preShadowSRV },
-		{ "Scene Final", finalViewportSRV },
-		{ "Shadow Map", shadowMapSRV }
-	};
-
-	static int selectedView = 0;
-	const float thumbnailHeight = 120.0f;
-
-	ImGui::TextDisabled("Generated pass textures");
-	ImGui::Separator();
-
-	for (int i = 0; i < IM_ARRAYSIZE(items); ++i) {
-		ImGui::PushID(i);
-		if (ImGui::Selectable(items[i].label, selectedView == i, 0, ImVec2(0.0f, 20.0f))) {
-			selectedView = i;
+	for (const auto& actor : actors) {
+		if (actor.isNull() || actor->getComponent<LightComponent>().isNull()) {
+			continue;
 		}
 
-		if (items[i].srv) {
-			const float thumbnailWidth = thumbnailHeight * 1.6f;
-			ImGui::Image((ImTextureID)items[i].srv, ImVec2(thumbnailWidth, thumbnailHeight));
+		auto transform = actor->getComponent<Transform>();
+		if (transform.isNull()) {
+			continue;
+		}
+
+		const EU::Vector3& position = transform->getPosition();
+		XMVECTOR worldPos = XMVectorSet(position.x, position.y, position.z, 1.0f);
+		XMVECTOR projected = XMVector3Project(worldPos,
+			m_viewportPos.x,
+			m_viewportPos.y,
+			m_viewportSize.x,
+			m_viewportSize.y,
+			0.0f,
+			1.0f,
+			camera.getProj(),
+			camera.getView(),
+			XMMatrixIdentity());
+
+		const float screenX = XMVectorGetX(projected);
+		const float screenY = XMVectorGetY(projected);
+		const float screenZ = XMVectorGetZ(projected);
+		if (screenZ < 0.0f || screenZ > 1.0f) {
+			continue;
+		}
+
+		ImVec2 center(screenX, screenY);
+
+		if (center.x < m_viewportPos.x || center.x > m_viewportPos.x + m_viewportSize.x ||
+			center.y < m_viewportPos.y || center.y > m_viewportPos.y + m_viewportSize.y) {
+			continue;
+		}
+
+		ImVec2 iconMin(center.x - iconSize.x * 0.5f, center.y - iconSize.y * 0.5f);
+		ImVec2 iconMax(center.x + iconSize.x * 0.5f, center.y + iconSize.y * 0.5f);
+		if (lightIconSRV) {
+			m_viewportDrawList->AddImage((ImTextureID)lightIconSRV, iconMin, iconMax,
+				ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f), IM_COL32(255, 236, 150, 255));
 		}
 		else {
-			ImGui::Dummy(ImVec2(thumbnailHeight * 1.6f, thumbnailHeight));
-			ImGui::SameLine(0.0f, 0.0f);
-			ImGui::TextDisabled("Unavailable");
+			m_viewportDrawList->AddCircleFilled(center, 9.0f, IM_COL32(255, 214, 92, 230), 16);
+			m_viewportDrawList->AddCircle(center, 11.0f, IM_COL32(255, 248, 214, 255), 16, 2.0f);
 		}
+	}
+}
 
-		if (i + 1 < IM_ARRAYSIZE(items)) {
-			ImGui::Separator();
+void GUI::drawRenderDebugPanel(ID3D11ShaderResourceView* preShadowSRV,
+	ID3D11ShaderResourceView* finalViewportSRV,
+	ID3D11ShaderResourceView* shadowMapSRV)
+{
+	m_renderDebugPreShadowSRV = preShadowSRV;
+	m_renderDebugFinalSRV = finalViewportSRV;
+	m_renderDebugShadowMapSRV = shadowMapSRV;
+}
+
+void GUI::drawGBufferDebugPanel(ID3D11ShaderResourceView* albedoMetallicSRV,
+	ID3D11ShaderResourceView* normalRoughnessSRV,
+	ID3D11ShaderResourceView* worldAoSRV,
+	ID3D11ShaderResourceView* emissiveAlphaSRV,
+	EU::TSharedPointer<Actor> selectedActor)
+{
+	GBufferChannelItem renderItems[] = {
+		{ "Final Render", "Rendered viewport output", m_renderDebugFinalSRV, m_renderDebugFinalSRV, 0, 0 },
+		{ "No Post-Processing", "Scene before post-processing", m_renderDebugPreShadowSRV, m_renderDebugPreShadowSRV, 0, 0 },
+		{ "Shadow Pass", "Shadow map generated by the lighting pass", m_renderDebugShadowMapSRV, m_renderDebugShadowMapSRV, 4, 0 }
+	};
+
+	MaterialInstance* selectedMaterial = nullptr;
+	int materialSlotCount = 0;
+	static int selectedMaterialSlot = 0;
+	if (!selectedActor.isNull()) {
+		EU::TSharedPointer<MeshRendererComponent> meshRenderer = selectedActor->getComponent<MeshRendererComponent>();
+		if (meshRenderer) {
+			const std::vector<MaterialInstance*>& materialInstances = meshRenderer->getMaterialInstances();
+			materialSlotCount = static_cast<int>(materialInstances.size());
+			if (selectedMaterialSlot >= materialSlotCount) {
+				selectedMaterialSlot = 0;
+			}
+			if (materialSlotCount > 0) {
+				selectedMaterial = materialInstances[selectedMaterialSlot];
+			}
+			else {
+				selectedMaterial = meshRenderer->getMaterialInstance();
+			}
 		}
-		ImGui::PopID();
 	}
 
-	ImGui::Separator();
-	ImGui::Text("Focused View: %s", items[selectedView].label);
+	GBufferChannelItem materialItems[] = {
+		{ "Base Color", "Viewport debug | RGB: Base Color", selectedMaterial ? GetTextureSRV(selectedMaterial->getAlbedo()) : nullptr, m_renderDebugFinalSRV, 0, 2 },
+		{ "Metalness", "Viewport debug | R: Metallic", selectedMaterial ? GetTextureSRV(selectedMaterial->getMetallic()) : nullptr, m_renderDebugFinalSRV, 1, 3 },
+		{ "Roughness", "Viewport debug | R: Roughness", selectedMaterial ? GetTextureSRV(selectedMaterial->getRoughness()) : nullptr, m_renderDebugFinalSRV, 2, 4 },
+		{ "Normal Map", "Viewport debug | RGB: Packed Normal", selectedMaterial ? GetTextureSRV(selectedMaterial->getNormal()) : nullptr, m_renderDebugFinalSRV, 3, 5 },
+		{ "AO Map", "Viewport debug | R: Ambient Occlusion", selectedMaterial ? GetTextureSRV(selectedMaterial->getAO()) : nullptr, m_renderDebugFinalSRV, 4, 6 },
+		{ "Emissive", "Viewport debug | RGB: Emissive", selectedMaterial ? GetTextureSRV(selectedMaterial->getEmissive()) : nullptr, m_renderDebugFinalSRV, 0, 7 }
+	};
 
-	ImVec2 available = ImGui::GetContentRegionAvail();
-	if (items[selectedView].srv && available.x > 16.0f && available.y > 16.0f) {
-		ImGui::Image((ImTextureID)items[selectedView].srv, available);
+	GBufferChannelItem gBufferItems[] = {
+		{ "Albedo + Metallic", "Generated GBuffer target | RGB: Base Color, A: Metallic", albedoMetallicSRV, albedoMetallicSRV, 0, 0 },
+		{ "Normal + Roughness", "Generated GBuffer target | RGB: Packed Normal, A: Roughness", normalRoughnessSRV, normalRoughnessSRV, 3, 0 },
+		{ "World + AO", "Generated GBuffer target | RGB: World Position, A: Ambient Occlusion", worldAoSRV, worldAoSRV, 4, 0 },
+		{ "Emissive + Alpha", "Generated GBuffer target | RGB: Emissive, A: Alpha", emissiveAlphaSRV, emissiveAlphaSRV, 5, 0 }
+	};
+
+	bool hasAnyTexture = false;
+	for (int i = 0; i < IM_ARRAYSIZE(renderItems); ++i) {
+		if (renderItems[i].srv != nullptr) {
+			hasAnyTexture = true;
+			break;
+		}
+	}
+	for (int i = 0; i < IM_ARRAYSIZE(materialItems); ++i) {
+		if (materialItems[i].srv != nullptr) {
+			hasAnyTexture = true;
+			break;
+		}
+	}
+	for (int i = 0; i < IM_ARRAYSIZE(gBufferItems); ++i) {
+		if (gBufferItems[i].srv != nullptr) {
+			hasAnyTexture = true;
+			break;
+		}
+	}
+
+	if (!hasAnyTexture) {
+		return;
+	}
+
+	ImGui::Begin("GBuffer Debug");
+
+	static int selectedView = 0;
+	const int renderItemCount = IM_ARRAYSIZE(renderItems);
+	const int materialItemCount = IM_ARRAYSIZE(materialItems);
+	const int gBufferItemCount = IM_ARRAYSIZE(gBufferItems);
+	const int gBufferStartIndex = renderItemCount + materialItemCount;
+	const int totalItemCount = renderItemCount + materialItemCount + gBufferItemCount;
+	if (selectedView >= totalItemCount) {
+		selectedView = 0;
+	}
+	const GBufferChannelItem* selectedItem = nullptr;
+	if (selectedView < renderItemCount) {
+		selectedItem = &renderItems[selectedView];
+	}
+	else if (selectedView < gBufferStartIndex) {
+		selectedItem = &materialItems[selectedView - renderItemCount];
 	}
 	else {
-		ImGui::Dummy(available);
-		ImGui::SameLine(0.0f, 0.0f);
-		ImGui::TextDisabled("No texture bound for this view");
+		selectedItem = &gBufferItems[selectedView - gBufferStartIndex];
+	}
+	ImGui::Checkbox("Visualize Shadow Factor", &m_visualizeDeferredShadowFactor);
+	m_deferredDebugViewMode = 0;
+	if (!m_visualizeDeferredShadowFactor &&
+		selectedView >= renderItemCount &&
+		selectedView < gBufferStartIndex) {
+		m_deferredDebugViewMode = selectedItem->debugViewMode;
+	}
+	ImGui::Separator();
+
+	const float channelColumnWidth = 210.0f;
+	if (ImGui::BeginTable("##GBufferDebugLayout", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchProp)) {
+		ImGui::TableSetupColumn("Channels", ImGuiTableColumnFlags_WidthFixed, channelColumnWidth);
+		ImGui::TableSetupColumn("Preview", ImGuiTableColumnFlags_WidthStretch);
+
+		ImGui::TableNextRow();
+		ImGui::TableSetColumnIndex(0);
+		ImGui::TextDisabled("RENDER (%d)", renderItemCount);
+		ImGui::Spacing();
+
+		for (int i = 0; i < renderItemCount; ++i) {
+			DrawGBufferChannelEntry(renderItems[i], i, selectedView);
+		}
+
+		ImGui::Spacing();
+		ImGui::Separator();
+		ImGui::Spacing();
+		ImGui::TextDisabled("MATERIAL CHANNELS (%d)", materialItemCount);
+		if (materialSlotCount > 1) {
+			ImGui::SetNextItemWidth(-1.0f);
+			ImGui::SliderInt("##MaterialSlot", &selectedMaterialSlot, 0, materialSlotCount - 1, "Slot %d");
+		}
+		else if (!selectedMaterial) {
+			ImGui::TextDisabled("Select a mesh actor");
+		}
+		ImGui::Spacing();
+
+		ImGui::BeginChild("##GBufferChannelList", ImVec2(0.0f, 0.0f), false);
+		for (int i = 0; i < materialItemCount; ++i) {
+			DrawGBufferChannelEntry(materialItems[i], renderItemCount + i, selectedView);
+		}
+
+		ImGui::Spacing();
+		ImGui::Separator();
+		ImGui::Spacing();
+		ImGui::TextDisabled("GBUFFER (%d)", gBufferItemCount);
+		ImGui::Spacing();
+		for (int i = 0; i < gBufferItemCount; ++i) {
+			DrawGBufferChannelEntry(gBufferItems[i], gBufferStartIndex + i, selectedView);
+		}
+		ImGui::EndChild();
+
+		ImGui::TableSetColumnIndex(1);
+		ImGui::Text("%s", selectedItem->label);
+		ImGui::TextDisabled("%s", selectedItem->channels);
+		ImGui::Spacing();
+
+		ImVec2 available = ImGui::GetContentRegionAvail();
+		if (available.x < 1.0f) available.x = 1.0f;
+		if (available.y < 1.0f) available.y = 1.0f;
+
+		ID3D11ShaderResourceView* previewSRV = selectedItem->previewSRV ? selectedItem->previewSRV : selectedItem->srv;
+		if (previewSRV && available.x > 16.0f && available.y > 16.0f) {
+			ImGui::Image((ImTextureID)previewSRV, available);
+		}
+		else {
+			ImGui::Dummy(available);
+			ImGui::SameLine(0.0f, 0.0f);
+			ImGui::TextDisabled("No texture bound for this view");
+		}
+
+		ImGui::EndTable();
 	}
 
 	ImGui::End();
@@ -1352,4 +1670,43 @@ void GUI::drawEditorDockspace()
 	ImGui::End();
 
 	ImGui::PopStyleVar(3);
+}
+
+void GUI::onLog(LogLevel level, const std::string& message) {
+	m_logBuffer.push_back({ level, message });
+	// Mantener solo los últimos 100 mensajes para no saturar memoria
+	if (m_logBuffer.size() > 100) m_logBuffer.erase(m_logBuffer.begin());
+}
+
+void GUI::drawLogConsole() {
+	ImGui::Begin("Console");
+
+	if (ImGui::Button("Clear")) {
+		m_logBuffer.clear();
+	}
+	ImGui::Separator();
+
+	ImGui::BeginChild("LogRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+
+	for (const auto& entry : m_logBuffer) {
+		if (entry.level == LogLevel::Error) {
+			// Error en color rojo brillante
+			ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "[ERROR] %s", entry.message.c_str());
+		}
+		else {
+			// Mensaje normal en color blanco/por defecto
+			ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "[MSG] %s", entry.message.c_str());
+		}
+	}
+
+	ImGui::EndChild();
+	ImGui::End();
+}
+
+void GUI::drawStatsPanel() {
+	ImGui::Begin("Stats");
+	ImGui::Text("FPS: %.1f", g_Stats.fps);
+	ImGui::Text("Frame Time: %.3f ms", g_Stats.frameTime * 1000.0f);
+	ImGui::Text("Draw Calls: %d", g_Stats.drawCalls);
+	ImGui::End();
 }

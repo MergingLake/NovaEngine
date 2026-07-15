@@ -108,6 +108,14 @@ struct CBChangesEveryFrame
   XMFLOAT4 vMeshColor;
 };
 
+struct EngineStats {
+  float fps = 0.0f;
+  float frameTime = 0.0f;
+  int drawCalls = 0;
+};
+// Declaramos que existe una variable global llamada g_Stats
+extern EngineStats g_Stats;
+
 enum ExtensionType {
   DDS = 0,
   PNG = 1,

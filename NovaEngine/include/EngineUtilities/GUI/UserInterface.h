@@ -1,232 +1,288 @@
 #pragma once
 #include "Prerequisites.h"
+#define	IMGUI_DEFINE_MATH_OPERATORS
+#include "imgui.h"
+#include "imgui_impl_win32.h"
+#include "imgui_impl_dx11.h"
+#include <imgui_internal.h>
+#include "Logger.h"
 #include "ImGuizmo.h"
 
 class Viewport;
-class Window;
-class Camera;
 class Device;
 class DeviceContext;
+class Window;
 class Actor;
+class Camera;
 
-/* 
-  @class GUI
-  @brief A class that manages the graphical user interface (GUI) of the application.
-  @note The GUI class is responsible for initializing, updating, rendering, and destroying the GUI elements of the application. It includes methods for creating toolbars, handling user interactions, and displaying various GUI components such as inspectors and outliners.
-*/
-class GUI {
+/**
+ * @class GUI
+ * @brief Manages the graphical user interface for the engine's editor.
+ * @author Ricardo Rabell
+ * @date 2026-02-15
+ *
+ * This class is the visual bridge between the engine's data and the developer.
+ * It uses Dear ImGui for standard UI elements (panels, buttons, properties)
+ * and ImGuizmo for 3D viewport manipulation.
+ * * Context: Without a GUI, a developer would have to hardcode coordinates to move
+ * an object. This class reads the ECS data (like an Actor's Transform) and
+ * presents it visually, allowing real-time edits that are fed back into the engine.
+ */
+class
+	GUI : public ILogObserver {
 public:
-	/* 
-		@brief Default constructor
-  */
-  GUI() = default;
-	/* 
-		@brief Destructor
-  */ 
-  ~GUI() = default;
+	/**
+	 * @brief Default constructor.
+	 */
+	GUI() = default;
 
-  /* 
-    @brief Initializes the GUI.
-    @details This method sets up any necessary resources or state for the GUI. It should be called before using any other methods of the GUI class.
-	*/
-  void
-    awake();
+	/**
+	 * @brief Default destructor.
+	 */
+	~GUI() = default;
 
-  /* 
-    @brief Initializes the GUI with the necessary context.
-    @details This method sets up the GUI with references to the window, device, and device context, allowing it to create and manage GUI elements that interact with these components.
-    @param window The window to associate the GUI with.
-    @param device The device to use for creating GUI resources.
-    @param deviceContext The device context to use for rendering the GUI.
-	*/
-  void
-    init(Window& window, Device& device, DeviceContext& deviceContext);
+	/**
+	 * @brief Early initialization step, typically used for allocating UI structures before DirectX is fully ready.
+	 */
+	void
+		awake();
 
-  /* 
-    @brief Updates the GUI.
-    @details This method should be called once per frame to update the state of the GUI elements, handle user interactions, and prepare for rendering. It takes references to the viewport and window to allow for any necessary updates based on their states.
-    @param viewport The viewport to use for any necessary updates related to the GUI.
-		@param window The window to use for any necessary updates related to the GUI.
-	*/
-  void
-    update(Viewport& viewport, Window& window);
+	/**
+	 * @brief Initializes the ImGui context, binding it to the Win32 window and DirectX 11 device.
+	 * @param window The main application window (needed for input handling).
+	 * @param device The D3D11 device (needed to create UI textures/fonts).
+	 * @param deviceContext The D3D11 device context (needed to draw the UI).
+	 */
+	void
+		init(Window& window, Device& device, DeviceContext& deviceContext);
 
-  /* 
-    @brief Renders the GUI.
-    @details This method should be called once per frame after the update method to render the GUI elements on the screen. It takes references to the viewport and window to allow for any necessary rendering based on their states.
-		@param viewport The viewport to use for rendering the GUI.
-  */
-  void
-    render();
+	/**
+	 * @brief Starts a new ImGui frame and prepares the UI layout.
+	 * @param viewport The engine's viewport, used to calculate where ImGuizmo should draw its 3D controls.
+	 * @param window The main window, used to poll inputs and window size.
+	 */
+	void
+		update(Viewport& viewport, Window& window);
 
-  /* 
-    @brief Destroys the GUI and releases associated resources.
-    @details This method should be called when the GUI is no longer needed to clean up any resources and ensure proper memory management.
-	*/
-  void
-    destroy();
+	/**
+	 * @brief Issues the draw commands for the UI.
+	 * @note This must be called at the very end of the render loop, right before SwapChain::present(),
+	 * so the UI is drawn on top of the 3D scene.
+	 */
+	void
+		render();
 
-  /* 
-    @brief Creates a toolbar for the GUI.
-		@details This method sets up a toolbar with various buttons and controls for interacting with the application. It can include functionality such as opening files, saving, undo/redo, and other common actions.
-	*/
-  void
-    ToolBar();
+	/**
+	 * @brief Cleans up ImGui context and resources.
+	 */
+	void
+		destroy();
 
-  /* 
-    @brief Closes the application.
-		@details This method can be called to trigger the closing of the application, such as when the user clicks an "Exit" button in the toolbar. It can set a flag to show a confirmation popup before actually closing the application.
-	*/
-  void
-    closeApp();
+	/**
+	 * @brief Draws the top main menu bar (e.g., File, Edit, View).
+	 */
+	void
+		toolBar();
 
-  /* 
-		@brief Displays a confirmation popup for exiting the application.
-		@details This method can be called to show a popup dialog asking the user to confirm if they want to exit the application. It can be triggered by the closeApp method and should handle the user's response to either proceed with closing or cancel the action.
-	*/
-  void
-    toolTipData();
+	/**
+	 * @brief Triggers the application shutdown sequence.
+	 */
+	void
+		closeApp();
 
-  /* 
-    @brief Applies a liquid style to the GUI elements.
-    @details This method can be called to set a specific style for the GUI elements, such as a liquid or glossy appearance. It takes parameters for opacity and accent color to customize the look of the GUI.
-    @param opacity A floating-point value between 0 and 1 that determines the transparency of the GUI elements.
-		@param accent An ImVec4 color value that specifies the accent color to use in the liquid style.
-	*/
-  void
-    appleLiquidStyle(float opacity /*0..1f*/, ImVec4 accent /*=#0A84FF*/);
+	/**
+	 * @brief Manages hover-over tooltips for UI elements to guide the user.
+	 */
+	void
+		toolTipData();
 
-  /* 
-    @brief Creates a control for editing a 3D vector (vec3) in the GUI.
-    @details This method sets up a control with three input fields for editing the x, y, and z components of a 3D vector. It can include functionality for resetting the values to a default state and adjusting the layout of the control.
-    @param label A string label to display next to the control.
-    @param values A pointer to an array of three floating-point values representing the x, y, and z components of the vector.
-		@param resetValues A floating-point value that can be used to reset the vector components to a default state (default is 0.0f).
-		@param columnWidth A floating-point value that specifies the width of the label column in the control (default is 100.0f).
-	*/
-  void
-    vec3Control(const std::string& label,
-      float* values,
-      float resetValues = 0.0f,
-      float columnWidth = 100.0f,
-      bool displayAsDegrees = false);
+	void
+		appleLiquidStyle(float opacity /*0..1f*/, ImVec4 accent /*=#0A84FF*/);
 
-  /* 
-    @brief Displays an inspector panel for a given actor in the GUI.
-    @details This method can be called to show an inspector panel that displays the properties and components of a specific actor. It allows the user to view and edit the details of the actor, such as its transform, materials, and other components.
-		@param actor A shared pointer to the actor for which to display the inspector panel.
-	*/
-  void
-    inspectorGeneral(EU::TSharedPointer<Actor> actor);
+	/**
+	 * @brief Helper function to draw a standardized 3-component vector editor (X, Y, Z).
+	 * @param label The property name (e.g., "Position").
+	 * @param values Pointer to the float[3] array holding the data.
+	 * @param resetValues The value to apply if the user clicks the reset button.
+	 * @param columnWidth Layout formatting width.
+	 */
+	void
+		vec3Control(const std::string& label,
+			float* values,
+			float resetValues = 0.0f,
+			float columnWidth = 100.0f,
+			bool displayAsDegrees = false);
 
-  /* 
-    @brief Displays a container for the inspector panel of a given actor in the GUI.
-		@details This method can be called to set up a container or layout for the inspector panel of a specific actor. It can be used to organize the various sections and controls within the inspector, such as separating the transform properties from the material properties.
-		@param actor A shared pointer to the actor for which to display the inspector container.
-	*/
-  void
-    inspectorContainer(EU::TSharedPointer<Actor> actor);
+	/**
+	 * @brief Draws the main Inspector panel for an Actor.
+	 * @param actor The currently selected actor whose details will be displayed.
+	 */
+	void
+		inspectorGeneral(EU::TSharedPointer<Actor> actor);
 
-  /* 
-    @brief Displays an outliner panel that lists all actors in the scene in the GUI.
-		@details This method can be called to show an outliner panel that provides a hierarchical view of all actors in the scene. It allows the user to select and manage actors, such as renaming them, changing their order in the hierarchy, or toggling their visibility.
-		@param actors A vector of shared pointers to the actors in the scene to be displayed in the outliner.
-	*/
-  void
-    outliner(const std::vector<EU::TSharedPointer<Actor>>& actors);
+	/**
+	 * @brief A modular container that dynamically lists all components attached to the selected Actor.
+	 * @param actor The selected actor.
+	 */
+	void
+		inspectorContainer(EU::TSharedPointer<Actor> actor);
 
-  /* 
-		@brief Displays a transform editing panel for a given actor in the GUI.
-		@details This method can be called to show a panel that allows the user to edit the transform properties of a specific actor, such as its position, rotation, and scale. It can include controls for adjusting these properties and visualizing the changes in the scene.
-		@param view The view matrix to use for visualizing the transform changes.
-		@param projection The projection matrix to use for visualizing the transform changes.
-		@param actor A shared pointer to the actor for which to display the transform editing panel.
-	*/
-  void
-    editTransform(Camera& cam, Window& window, EU::TSharedPointer<Actor> actor);
+	/**
+	 * @brief Draws the Outliner (Scene Hierarchy) panel.
+	 * Context: This is the tree-view list of all Actors currently in the scene,
+	 * allowing the user to select them.
+	 * @param actors The list of all active actors in the scene.
+	 */
+	void
+		outliner(const std::vector<EU::TSharedPointer<Actor>>& actors);
 
-  /* 
-		@brief Displays a toolbar for gizmo controls in the GUI.
-		@details This method can be called to set up a toolbar that provides controls for manipulating gizmos in the scene, such as translation, rotation, and scaling gizmos. It allows the user to switch between different gizmo modes and adjust their settings.
-  */
-  void
-    drawGizmoToolbar();
+	/**
+	 * @brief Draws the 3D manipulation gizmo over the selected actor in the viewport.
+	 * Context: Calculates the screen-space projection of the 3D object to draw interactive
+	 * arrows (translation), rings (rotation), or boxes (scale) using ImGuizmo.
+	 * @param view The active camera's view matrix.
+	 * @param projection The active camera's projection matrix.
+	 * @param actor The actor currently being manipulated.
+	 */
+	void
+		editTransform(Camera& cam, Window& window, EU::TSharedPointer<Actor> actor);
 
-  /*
-		@brief Converts an XMMATRIX to a float array suitable for use with ImGuizmo.
-		@details This method takes an XMMATRIX and stores its values in a float array in the format expected by ImGuizmo for manipulation. It uses an intermediate XMFLOAT4X4 to store the matrix values before copying them to the destination float array.
-		@param mat The XMMATRIX to convert.
-		@param dest A pointer to a float array with at least 16 elements where the converted matrix values will be stored.
-  */
-  void ToFloatArray(const XMMATRIX& mat, float* dest) {
-    XMFLOAT4X4 temp;
-    XMStoreFloat4x4(&temp, mat);
-    memcpy(dest, &temp, sizeof(float) * 16);
-  }
+	/**
+	 * @brief Draws the UI toolbar to switch between Translate, Rotate, and Scale gizmo modes.
+	 */
+	void
+		drawGizmoToolbar();
 
-  /* 
-    @brief Draws the top ribbon of the studio interface.
-    @details This method can be called to render the top ribbon of the studio interface, which typically includes menu options, toolbars, and other controls for managing the application. It should be called during the GUI rendering phase to ensure that it is displayed correctly on the screen.
-	*/
-  void
-    drawStudioTopRibbon();
+	/**
+	 * @brief Adapter function to convert DirectX 11 math to ImGuizmo math.
+	 * Context: ImGuizmo expects matrices as flat 16-float arrays in memory, while
+	 * DirectX uses the SIMD-optimized XMMATRIX. This function bridges that gap.
+	 * @param mat The DirectX matrix to convert.
+	 * @param dest The pre-allocated float array (size 16) to receive the data.
+	 */
+	void
+		toFloatArray(const XMMATRIX& mat, float* dest) {
+		XMFLOAT4X4 temp;
+		XMStoreFloat4x4(&temp, mat);
+		memcpy(dest, &temp, sizeof(float) * 16);
+	}
 
-  /* 
-    @brief Draws the viewport panel in the GUI.
-    @details This method can be called to render the viewport panel, which displays the rendered scene from the camera's perspective. It takes a shader resource view (SRV) of the viewport texture to display it within the panel.
-		@param viewportSRV A pointer to an ID3D11ShaderResourceView representing the texture of the viewport to be displayed in the panel.
-	*/
-  void
-    drawViewportPanel(ID3D11ShaderResourceView* viewportSRV);
+	//---------------------
+	void
+		drawStudioTopRibbon();
 
-	/* 
-    @brief Draws a debug panel for rendering information in the GUI.
-    @details This method can be called to render a debug panel that displays various rendering-related information, such as the pre-shadow map, the final viewport output, and the shadow map. It takes shader resource views (SRVs) for each of these textures to display them within the panel for debugging purposes.
-    @param preShadowSRV A pointer to an ID3D11ShaderResourceView representing the pre-shadow map texture to be displayed in the debug panel.
-    @param finalViewportSRV A pointer to an ID3D11ShaderResourceView representing the final viewport output texture to be displayed in the debug panel.
-		@param shadowMapSRV A pointer to an ID3D11ShaderResourceView representing the shadow map texture to be displayed in the debug panel.
-	*/
-  void
-    drawRenderDebugPanel(ID3D11ShaderResourceView* preShadowSRV,
-      ID3D11ShaderResourceView* finalViewportSRV,
-      ID3D11ShaderResourceView* shadowMapSRV);
+	void
+		drawViewportPanel(ID3D11ShaderResourceView* viewportSRV,
+			const std::vector<EU::TSharedPointer<Actor>>& actors,
+			Camera& camera,
+			Window& window,
+			EU::TSharedPointer<Actor> selectedActor,
+			ID3D11ShaderResourceView* lightIconSRV);
 
-	/* 
-    @brief Draws the dockspace for the editor interface in the GUI.
-		@details This method can be called to set up and render the dockspace for the editor interface, which allows for flexible arrangement of panels and windows within the editor. It should be called during the GUI rendering phase to ensure that it is displayed correctly on the screen and allows for docking and undocking of panels as needed.
-  */
-  void
-    drawEditorDockspace();
+	void
+		drawLightIcons(const std::vector<EU::TSharedPointer<Actor>>& actors,
+			Camera& camera,
+			ID3D11ShaderResourceView* lightIconSRV);
 
-  /**
-   * @brief Consume de forma atomica la solicitud de guardado emitida desde la UI.
-   * @return `true` una sola vez por peticion de guardado.
-   */
-  bool
-    consumeSaveSceneRequest() {
-    const bool requested = m_requestSaveScene;
-    m_requestSaveScene = false;
-    return requested;
-  }
+	void
+		drawRenderDebugPanel(ID3D11ShaderResourceView* preShadowSRV,
+			ID3D11ShaderResourceView* finalViewportSRV,
+			ID3D11ShaderResourceView* shadowMapSRV);
+
+	void
+		drawGBufferDebugPanel(ID3D11ShaderResourceView* albedoMetallicSRV,
+			ID3D11ShaderResourceView* normalRoughnessSRV,
+			ID3D11ShaderResourceView* worldAoSRV,
+			ID3D11ShaderResourceView* emissiveAlphaSRV,
+			EU::TSharedPointer<Actor> selectedActor);
+
+	void
+		drawEditorDockspace();
+
+	/**
+	 * @brief Consume de forma atomica la solicitud de guardado emitida desde la UI.
+	 * @return `true` una sola vez por peticion de guardado.
+	 */
+	bool
+		consumeSaveSceneRequest() {
+		const bool requested = m_requestSaveScene;
+		m_requestSaveScene = false;
+		return requested;
+	}
+
+	bool
+		consumeCreateLightActorRequest() {
+		const bool requested = m_requestCreateLightActor;
+		m_requestCreateLightActor = false;
+		return requested;
+	}
+
+	bool m_requestCopy = false;
+	bool m_requestPaste = false;
+	bool m_requestCut = false;
+	bool m_requestDuplicate = false;
+
+	void onLog(LogLevel level, const std::string& message) override;
+	void drawLogConsole(); // Nueva ventana
+	void drawStatsPanel();
+
+	//---------------------
 
 private:
-  bool checkboxValue = true;
-  bool checkboxValue2 = false;
-  std::vector<const char*> m_objectsNames;
-  std::vector<const char*> m_tooltips;
+	/**
+	* @brief Example checkbox value for UI state.
+	* Used to store the state of a sample checkbox in the GUI.
+	*/
+	bool checkboxValue = true;
 
-  bool show_exit_popup = false; // Variable de estado para el popup
+	/**
+	* @brief Example secondary checkbox value for UI state.
+	* Used to store the state of a second checkbox in the GUI.
+	*/
+	bool checkboxValue2 = false;
 
-  bool m_requestSaveScene = false;
-  ImDrawList* m_viewportDrawList = nullptr;
-  bool m_viewportActive = false;
+	/**
+	* @brief List of object names displayed in the UI.
+	* Holds C-style string pointers to the names of objects shown in panels such as the outliner.
+	*/
+	std::vector<const char*> m_objectsNames;
+
+	/**
+	* @brief List of tooltips for UI elements.
+	* Holds C-style string pointers to tooltip texts that provide contextual help in the GUI.
+	*/
+	std::vector<const char*> m_tooltips;
+
+	/**
+	* @brief Flag to control the display of the exit confirmation popup.
+	* True if the exit popup should be shown, false otherwise.
+	*/
+	bool show_exit_popup = false;
+
+	bool m_requestSaveScene = false;
+	bool m_requestCreateLightActor = false;
+	ImDrawList* m_viewportDrawList = nullptr;
+	ImGuiWindow* m_viewportWindow = nullptr;
+	bool m_viewportVisibleThisFrame = false;
+	bool m_viewportActive = false;
+
+	ID3D11ShaderResourceView* m_renderDebugPreShadowSRV = nullptr;
+	ID3D11ShaderResourceView* m_renderDebugFinalSRV = nullptr;
+	ID3D11ShaderResourceView* m_renderDebugShadowMapSRV = nullptr;
 
 public:
-  bool m_isUsingGizmo = false;
-  int selectedActorIndex = -1;
+	bool m_isUsingGizmo = false;
+	bool m_visualizeDeferredShadowFactor = false;
+	int m_deferredDebugViewMode = 0;
 
-  ImVec2 m_viewportPos = ImVec2(0.0f, 0.0f);
-  ImVec2 m_viewportSize = ImVec2(0.0f, 0.0f);
-  bool m_viewportHovered = false;
-  bool m_viewportFocused = false;
+	/** @brief The index of the currently selected actor in the outliner. -1 means no selection. */
+	int selectedActorIndex = -1;
+
+	ImVec2 m_viewportPos = ImVec2(0.0f, 0.0f);
+	ImVec2 m_viewportSize = ImVec2(0.0f, 0.0f);
+	bool m_viewportHovered = false;
+	bool m_viewportFocused = false;
+
+	struct LogEntry { LogLevel level; std::string message; };
+	std::vector<LogEntry> m_logBuffer;
 };

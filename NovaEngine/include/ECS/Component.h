@@ -55,6 +55,13 @@ public:
    */
   ComponentType
     getType() const { return m_type; }
+
+  /**
+   * @brief Crea una copia profunda (Deep Copy) del componente actual.
+   * @return Un puntero compartido al nuevo componente clonado.
+   */
+  virtual EU::TSharedPointer<Component> clone() const = 0;
+
 protected:
   ComponentType m_type; ///< Tipo del componente.
 };

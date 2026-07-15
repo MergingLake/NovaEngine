@@ -1,3 +1,8 @@
+/**
+ * @file DeferredRenderer.cpp
+ * @brief Implementa la logica de DeferredRenderer dentro del subsistema Rendering.
+ * @ingroup rendering
+ */
 #include "Rendering/DeferredRenderer.h"
 #include <algorithm>
 #include <cmath>
@@ -177,8 +182,8 @@ DeferredRenderer::destroy() {
 	SAFE_RELEASE(m_additiveBlendState);
 	SAFE_RELEASE(m_premultipliedBlendState);
 
-	m_fullscreenIndexBuffer.destroy();
-	m_fullscreenVertexBuffer.destroy();
+	m_fullScreenIndexBuffer.destroy();
+	m_fullScreenVertexBuffer.destroy();
 
 	m_gBufferEmissiveAlphaRTV.destroy();
 	m_gBufferEmissiveAlphaSRV.destroy();
@@ -193,7 +198,7 @@ DeferredRenderer::destroy() {
 	m_gBufferAlbedoMetallicSRV.destroy();
 	m_gBufferAlbedoMetallicTexture.destroy();
 
-	m_fullscreenRasterizer.destroy();
+	m_fullScreenRasterizer.destroy();
 	m_lightingSampler.destroy();
 	m_deferredLightingShader.destroy();
 	m_gBufferShader.destroy();
@@ -465,18 +470,18 @@ DeferredRenderer::renderLightingPass(DeviceContext& deviceContext) {
 		deviceContext.PSSetShaderResources(6, 1, nullShadowSRV);
 	}
 	m_disabledDepthStencil.render(deviceContext, 0, false);
-	m_fullscreenRasterizer.render(deviceContext);
+	m_fullScreenRasterizer.render(deviceContext);
 	m_lightingSampler.render(deviceContext, 0, 1);
 	m_deferredLightingShader.render(deviceContext);
 	m_perFrameBuffer.render(deviceContext, 0, 1, true);
-	m_lightingDebugData.DebugViewMode = m_shadowFactorDebugEnabled ? 1 : m_deferredDebugViewMode;
-	m_lightingDebugData.ShadowStrength = 1.0f;
+	m_lightingDebugData.debugViewMode = m_shadowFactorDebugEnabled ? 1 : m_deferredDebugViewMode;
+	m_lightingDebugData.shadowStrength = 1.0f;
 	m_lightingDebugBuffer.update(deviceContext, nullptr, 0, nullptr, &m_lightingDebugData, 0, 0);
 	m_lightingDebugBuffer.render(deviceContext, 1, 1, true);
 
 	deviceContext.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	m_fullscreenVertexBuffer.render(deviceContext, 0, 1);
-	m_fullscreenIndexBuffer.render(deviceContext, 0, 1, false, DXGI_FORMAT_R32_UINT);
+	m_fullScreenVertexBuffer.render(deviceContext, 0, 1);
+	m_fullScreenIndexBuffer.render(deviceContext, 0, 1, false, DXGI_FORMAT_R32_UINT);
 	deviceContext.OMSetBlendState(m_opaqueBlendState, m_blendFactor, 0xffffffff);
 	deviceContext.DrawIndexed(6, 0, 0);
 
@@ -812,7 +817,7 @@ DeferredRenderer::createLightingResources(Device& device) {
 		return hr;
 	}
 
-	return m_fullscreenRasterizer.init(device, D3D11_FILL_SOLID, D3D11_CULL_NONE, false, false);
+	return m_fullScreenRasterizer.init(device, D3D11_FILL_SOLID, D3D11_CULL_NONE, false, false);
 }
 
 HRESULT
@@ -828,12 +833,12 @@ DeferredRenderer::createFullScreenQuad(Device& device) {
 	mesh.m_numVertex = static_cast<int>(mesh.m_vertex.size());
 	mesh.m_numIndex = static_cast<int>(mesh.m_index.size());
 
-	HRESULT hr = m_fullscreenVertexBuffer.init(device, mesh, D3D11_BIND_VERTEX_BUFFER);
+	HRESULT hr = m_fullScreenVertexBuffer.init(device, mesh, D3D11_BIND_VERTEX_BUFFER);
 	if (FAILED(hr)) {
 		return hr;
 	}
 
-	return m_fullscreenIndexBuffer.init(device, mesh, D3D11_BIND_INDEX_BUFFER);
+	return m_fullScreenIndexBuffer.init(device, mesh, D3D11_BIND_INDEX_BUFFER);
 }
 
 HRESULT

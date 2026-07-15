@@ -135,6 +135,19 @@ public:
   void
     translate(const EU::Vector3& translation);
 
+  /*
+   * @brief Crea una copia profunda del componente Transform.
+   */
+  EU::TSharedPointer<Component> clone() const override {
+    Transform* clonedRaw = new Transform();
+
+    clonedRaw->setPosition(this->getPosition());
+    clonedRaw->setRotation(this->getRotation());
+    clonedRaw->setScale(this->getScale());
+
+    return EU::TSharedPointer<Component>(clonedRaw);
+  }
+
 private:
   EU::Vector3 position;  // Posición del objeto
   EU::Vector3 rotation;  // Rotación del objeto

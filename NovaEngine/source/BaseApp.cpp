@@ -1,61 +1,104 @@
 #include "BaseApp.h"
-#include <ResourceManager.h>
+#include "ResourceManager.h"
 #include <algorithm>
 #include <cctype>
 #include <fstream>
 #include <iomanip>
 
+EngineStats g_Stats;
+
+namespace {
+  bool isSerializedLightActorName(const std::string& actorName)
+  {
+    return actorName.rfind("Light Actor", 0) == 0;
+  }
+
+  void ensureDefaultLightComponent(const EU::TSharedPointer<Actor>& actor)
+  {
+    if (actor.isNull()) {
+      return;
+    }
+
+    EU::TSharedPointer<LightComponent> lightComponent = actor->getComponent<LightComponent>();
+    if (!lightComponent) {
+      lightComponent = EU::MakeShared<LightComponent>();
+      actor->addComponent(lightComponent);
+    }
+
+    LightData& light = lightComponent->getLightData();
+    light.type = LightType::Directional;
+    light.color = EU::Vector3(1.0f, 1.0f, 1.0f);
+    light.intensity = 1.0f;
+    light.direction = EU::Vector3(-0.20f, -1.0f, 1.0f);
+    light.range = 12.0f;
+    light.spotAngle = 0.0f;
+    lightComponent->setCastShadow(true);
+  }
+}
+
 HRESULT
 BaseApp::awake() {
-	HRESULT hr = S_OK;
+  HRESULT hr = S_OK;
 
-	m_sceneGraph.init();
+  // Initialize DLL's and external elements to the engine
+  m_sceneGraph.init();
 
-	MESSAGE("Main", "Awake", "Aplication awake successfully.");
-	return hr;
+	Logger::Get().Subscribe(&m_gui);
+
+  // Log success Message
+  MESSAGE("Main", "Awake", "Application awake succesfully.");
+	Logger::Get().LogRaw("Main", "Application awake succesfully.", LogLevel::Message);
+
+  return hr;
 }
 
 int
 BaseApp::run(HINSTANCE hInst, int nCmdShow) {
-	if (FAILED(m_window.init(hInst, nCmdShow, WndProc, this))) {
-		ERROR("Main", "Run", "Failed to initialize window.");
-		return 0;
-	}
-	if (FAILED(awake())) {
-		ERROR("Main", "Run", "Failed to awake application.");
-		return 0;
-	}
-	if (FAILED(init())) {
-		ERROR("Main", "Run", "Failed to initialize device and device context.");
-		return 0;
-	}
+  // 1) Initialize Window
+  if (FAILED(m_window.init(hInst, nCmdShow, wndProc, this))) {
+    ERROR("Main", "Run", "Failed to initialize window.");
+		Logger::Get().LogRaw("Main", "Failed to initialize window.", LogLevel::Error);
+    return 0;
+  }
+  // 2) Awake Application
+  if (FAILED(awake())) {
+    ERROR("Main", "Run", "Failed to awake application.");
+		Logger::Get().LogRaw("Main", "Failed to awake application.", LogLevel::Error);
+    return 0;
+  }
+  // 3) Initialize Device and Device Context
+  if (FAILED(init())) {
+    ERROR("Main", "Run", "Failed to initialize device and device context.");
+		Logger::Get().LogRaw("Main", "Failed to initialize device and device context.", LogLevel::Error);
+    return 0;
+  }
+  // 4) Initialize GUI
+  m_gui.init(m_window, m_device, m_deviceContext);
+  m_guiInitialized = true;
 
-	m_gui.init(m_window, m_device, m_deviceContext);
-	m_guiInitialized = true;
-
-	// Main message loop
-	MSG msg = {};
-	LARGE_INTEGER freq, prev;
-	QueryPerformanceFrequency(&freq);
-	QueryPerformanceCounter(&prev);
-	while (WM_QUIT != msg.message)
-	{
-		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
-		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
-		else
-		{
-			LARGE_INTEGER curr;
-			QueryPerformanceCounter(&curr);
-			float deltaTime = static_cast<float>(curr.QuadPart - prev.QuadPart) / freq.QuadPart;
-			prev = curr;
-			update(deltaTime);
-			render();
-		}
-	}
-	return (int)msg.wParam;
+  // Main message loop
+  MSG msg = {};
+  LARGE_INTEGER freq, prev;
+  QueryPerformanceFrequency(&freq);
+  QueryPerformanceCounter(&prev);
+  while (WM_QUIT != msg.message)
+  {
+    if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+    {
+      TranslateMessage(&msg);
+      DispatchMessage(&msg);
+    }
+    else
+    {
+      LARGE_INTEGER curr;
+      QueryPerformanceCounter(&curr);
+      float deltaTime = static_cast<float>(curr.QuadPart - prev.QuadPart) / freq.QuadPart;
+      prev = curr;
+      update(deltaTime);
+      render();
+    }
+  }
+  return (int)msg.wParam;
 }
 
 HRESULT
@@ -67,7 +110,8 @@ BaseApp::init() {
 
 	if (FAILED(hr)) {
 		ERROR("Main", "InitDevice",
-			("Failed to initialize SwpaChian. HRESULT: " + std::to_string(hr)).c_str());
+			("Failed to initialize SwapChain. HRESULT: " + std::to_string(hr)).c_str());
+		Logger::Get().LogRaw("Main", "Failed to initialize SwapChain.", LogLevel::Error);
 		return hr;
 	}
 
@@ -86,7 +130,7 @@ BaseApp::init() {
 		m_window.m_height,
 		DXGI_FORMAT_D24_UNORM_S8_UINT,
 		D3D11_BIND_DEPTH_STENCIL,
-		4,
+		1,
 		0);
 
 	if (FAILED(hr)) {
@@ -114,7 +158,6 @@ BaseApp::init() {
 			("Failed to initialize Viewport. HRESULT: " + std::to_string(hr)).c_str());
 		return hr;
 	}
-
 	m_d3dReady = true;
 
 	// Load Resources -> Modelos, Texturas e Interfaz de usuario
@@ -127,184 +170,165 @@ BaseApp::init() {
 		"Skybox/cubemap_5.png"
 	};
 	m_skyboxTex.CreateCubemap(m_device, m_deviceContext, faces, false);
+	HRESULT lightIconHr = m_lightIconTexture.init(m_device, "Icons/LightBulbIcon", PNG);
+	if (FAILED(lightIconHr)) {
+		MESSAGE("Main", "InitDevice",
+			"Light actor icon not found. Continuing with fallback light marker.");
+		Logger::Get().LogRaw("Main", "Light actor icon not found. Continuing with fallback light marker.", LogLevel::Message);
+	}
 
-	// Set Peashooter Actor
+	// Set CyberGun Actor
+	//m_cyberGun = EU::MakeShared<Actor>(m_device);
+	//m_drakefirePistol = EU::MakeShared<Actor>(m_device);
 	m_gameboy = EU::MakeShared<Actor>(m_device);
 	m_sciFiToad = EU::MakeShared<Actor>(m_device);
 
-	/*
-	if (!m_peashooter.isNull()) {
-		// Crear vertex buffer y index buffer para el Peashooter
-		std::vector<MeshComponent> peashooterMeshes;
+	if (!m_gameboy.isNull()) {
 		m_model = new Model3D("Models/Gameboy.fbx", ModelType::FBX);
-		peashooterMeshes = m_model->GetMeshes();
-
-		std::vector<Texture> peashooterTextures;
-		hr = m_AlbedoSRV.init(m_device, "Textures/Gameboy/base", PNG);
-		if (FAILED(hr)) {
-			ERROR("Main", "InitDevice",
-				("Failed to initialize DMR Texture. HRESULT: " + std::to_string(hr)).c_str());
-			return hr;
-		}
-		hr = m_MetallicSRV.init(m_device, "Textures/Gameboy/metallic", PNG);
-		if (FAILED(hr)) {
-			ERROR("Main", "InitDevice",
-				("Failed to initialize DMR Texture. HRESULT: " + std::to_string(hr)).c_str());
-			return hr;
-		}
-		hr = m_RoughnessSRV.init(m_device, "Textures/Gameboy/roughness", PNG);
-		if (FAILED(hr)) {
-			ERROR("Main", "InitDevice",
-				("Failed to initialize DMR Texture. HRESULT: " + std::to_string(hr)).c_str());
-			return hr;
-		}
-		hr = m_AOSRV.init(m_device, "Textures/Gameboy/ao", PNG);
-		// Load the Texture
-		if (FAILED(hr)) {
-			ERROR("Main", "InitDevice",
-				("Failed to initialize DMR Texture. HRESULT: " + std::to_string(hr)).c_str());
-			return hr;
-		}
-		hr = m_NormalSRV.init(m_device, "Textures/Gameboy/normal", PNG);
-		if (FAILED(hr)) {
-			ERROR("Main", "InitDevice",
-				("Failed to initialize DMR Texture. HRESULT: " + std::to_string(hr)).c_str());
-			return hr;
-		}
-		peashooterTextures.push_back(m_AlbedoSRV);
-		peashooterTextures.push_back(m_NormalSRV);
-		peashooterTextures.push_back(m_MetallicSRV);
-		peashooterTextures.push_back(m_RoughnessSRV);
-		peashooterTextures.push_back(m_AOSRV);
-
-		m_peashooter->setMesh(m_device, peashooterMeshes);
-		m_peashooter->setTextures(peashooterTextures);
-		m_peashooter->setName("Gameboy");
-		m_actors.push_back(m_peashooter);
-
-		m_peashooter->getComponent<Transform>()->setTransform(EU::Vector3(0.0f, 0.0f, 0.0f),
-			EU::Vector3(0.0f, 1.0f, 0.0f),
-			EU::Vector3(1.0f, 1.0f, 1.0f));
-	}
-	else {
-		ERROR("Main", "InitDevice", "Failed to create DMR Actor.");
-		return E_FAIL;
-	}
-	*/
-
-	if (!m_sciFiToad.isNull()) {
-		m_model = new Model3D("Models/SciFiToad.fbx", ModelType::FBX);
-
-		if (!m_model || !m_model->load("Models/SciFiToad.fbx")) {
-			ERROR("Main", "InitDevice", "Failed to load SciFiToad model.");
+		if (!m_model || !m_model->load("Models/Gameboy.fbx")) {
+			ERROR("Main", "InitDevice", "Failed to load Gameboy model.");
 			return E_FAIL;
 		}
 
-		hr = m_AlbedoSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Body_BC", PNG);
+		hr = m_AlbedoSRV.init(m_device, "Textures/Gameboy/Gameboy_d", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
-				("Failed to initialize SciFiToad Albedo. HRESULT: " + std::to_string(hr)).c_str());
+				("Failed to initialize Gameboy Texture. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
-
-		hr = m_MetallicSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Body_M", PNG);
+		hr = m_MetallicSRV.init(m_device, "Textures/Gameboy/Gameboy_m", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
-				("Failed to initialize SciFiToad Metallic. HRESULT: " + std::to_string(hr)).c_str());
+				("Failed to initialize Gameboy Texture. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
-
-		hr = m_RoughnessSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Body_R", PNG);
+		hr = m_RoughnessSRV.init(m_device, "Textures/Gameboy/Gameboy_r", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
-				("Failed to initialize SciFiToad Roughness. HRESULT: " + std::to_string(hr)).c_str());
+				("Failed to initialize Gameboy Texture. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
-
-		hr = m_AOSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Body_AO", PNG);
+		hr = m_AOSRV.init(m_device, "Textures/Gameboy/Gameboy_ao", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
-				("Failed to initialize SciFiToad Ambient Occlusion. HRESULT: " + std::to_string(hr)).c_str());
+				("Failed to initialize Gameboy Texture. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
-
-		hr = m_NormalSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Body_N", PNG);
+		hr = m_NormalSRV.init(m_device, "Textures/Gameboy/Gameboy_n", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
-				("Failed to initialize SciFiToad Normal. HRESULT: " + std::to_string(hr)).c_str());
+				("Failed to initialize Gameboy Texture. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
+		m_gameboy->setName("Gameboy");
+		m_actors.push_back(m_gameboy);
 
-		hr = m_EmissiveSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Emissive", PNG);
-		if (FAILED(hr)) {
-			MESSAGE("Main", "InitDevice", "SciFiToad emissive texture not found. Continuing without emissive map.");
-		}
-
-		m_sciFiToad->setName("SciFiToad");
-		m_actors.push_back(m_sciFiToad);
-
-		m_sciFiToad->getComponent<Transform>()->setTransform(EU::Vector3(2.0f, -1.90f, 11.60f),
+		m_gameboy->getComponent<Transform>()->setTransform(EU::Vector3(2.0f, -1.90f, 11.60f),
 			EU::Vector3(-0.60f, 3.0f, -0.20f),
 			EU::Vector3(1.0f, 1.0f, 1.0f));
 	}
 	else {
-		ERROR("Main", "InitDevice", "Failed to create SciFiToad Actor.");
+		ERROR("Main", "InitDevice", "Failed to create Gameboy Actor.");
 		return E_FAIL;
 	}
 
-	// -------------------------------------------------------------------------
-	// Gameboy Setup
-	// -------------------------------------------------------------------------
-	if (!m_gameboy.isNull()) {
-		m_gameboyModel = new Model3D("Models/Gameboy.fbx", ModelType::FBX);
-		if (!m_gameboyModel || !m_gameboyModel->load("Models/Gameboy.fbx")) {
-			ERROR("Main", "InitDevice", "Failed to load gameboy pistol model.");
+	if (!m_sciFiToad.isNull()) {
+		m_sciFiToadModel = new Model3D("Models/SciFiToad.fbx", ModelType::FBX);
+		if (!m_sciFiToadModel || !m_sciFiToadModel->load("Models/SciFiToad.fbx")) {
+			ERROR("Main", "InitDevice", "Failed to load Sci-Fi sciFiToad model.");
 			return E_FAIL;
 		}
 
-		hr = m_gameboyAlbedoSRV.init(m_device, "Textures/Gameboy/Gameboy_d", PNG);
+		hr = m_sciFiToadAlbedoSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Body_BC", PNG);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
-				("Failed to initialize gameboy albedo texture. HRESULT: " + std::to_string(hr)).c_str());
+				("Failed to initialize Sci-Fi sciFiToad albedo texture. HRESULT: " + std::to_string(hr)).c_str());
+			return hr;
+		}
+		hr = m_sciFiToadNormalSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Body_N", PNG);
+		if (FAILED(hr)) {
+			ERROR("Main", "InitDevice",
+				("Failed to initialize Sci-Fi sciFiToad normal texture. HRESULT: " + std::to_string(hr)).c_str());
+			return hr;
+		}
+		hr = m_sciFiToadMetallicSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Body_M", PNG);
+		if (FAILED(hr)) {
+			ERROR("Main", "InitDevice",
+				("Failed to initialize Sci-Fi sciFiToad metallic texture. HRESULT: " + std::to_string(hr)).c_str());
+			return hr;
+		}
+		hr = m_sciFiToadRoughnessSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Body_R", PNG);
+		if (FAILED(hr)) {
+			ERROR("Main", "InitDevice",
+				("Failed to initialize Sci-Fi sciFiToad roughness texture. HRESULT: " + std::to_string(hr)).c_str());
+			return hr;
+		}
+		hr = m_sciFiToadAOSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Body_AO", PNG);
+		if (FAILED(hr)) {
+			ERROR("Main", "InitDevice",
+				("Failed to initialize Sci-Fi sciFiToad AO texture. HRESULT: " + std::to_string(hr)).c_str());
+			return hr;
+		}
+		hr = m_sciFiToadGlassAlbedoSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Glass_BC", PNG);
+		if (FAILED(hr)) {
+			ERROR("Main", "InitDevice",
+				("Failed to initialize Sci-Fi sciFiToad glass albedo texture. HRESULT: " + std::to_string(hr)).c_str());
+			return hr;
+		}
+		hr = m_sciFiToadGlassNormalSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Glass_N", PNG);
+		if (FAILED(hr)) {
+			ERROR("Main", "InitDevice",
+				("Failed to initialize Sci-Fi sciFiToad glass normal texture. HRESULT: " + std::to_string(hr)).c_str());
+			return hr;
+		}
+		hr = m_sciFiToadGlassRoughnessSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Glass_R", PNG);
+		if (FAILED(hr)) {
+			ERROR("Main", "InitDevice",
+				("Failed to initialize Sci-Fi sciFiToad glass roughness texture. HRESULT: " + std::to_string(hr)).c_str());
+			return hr;
+		}
+		hr = m_sciFiToadAOSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Glass_AO", PNG);
+		if (FAILED(hr)) {
+			ERROR("Main", "InitDevice",
+				("Failed to initialize Sci-Fi sciFiToad glass AO texture. HRESULT: " + std::to_string(hr)).c_str());
+			return hr;
+		}
+		hr = m_sciFiToadHeadAlbedoSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Head_BC", PNG);
+		if (FAILED(hr)) {
+			ERROR("Main", "InitDevice",
+				("Failed to initialize Sci-Fi sciFiToad head albedo texture. HRESULT: "
+					+ std::to_string(hr)).c_str());
+			return hr;
+		}
+		hr = m_sciFiToadHeadNormalSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Head_N", PNG);
+		if (FAILED(hr)) {
+			ERROR("Main", "InitDevice",
+				("Failed to initialize Sci-Fi sciFiToad head normal texture. HRESULT: "
+					+ std::to_string(hr)).c_str());
+			return hr;
+		}
+		hr = m_sciFiToadHeadRoughnessSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Head_R", PNG);
+		if (FAILED(hr)) {
+			ERROR("Main", "InitDevice",
+				("Failed to initialize Sci-Fi sciFiToad head roughness texture. HRESULT: "
+					+ std::to_string(hr)).c_str());
+			return hr;
+		}
+		hr = m_sciFiToadAOSRV.init(m_device, "Textures/ScifiToad/Sci-FIToad_Head_AO", PNG);
+		if (FAILED(hr)) {
+			ERROR("Main", "InitDevice",
+				("Failed to initialize Sci-Fi sciFiToad head AO texture. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
 
-		hr = m_gameboyNormalSRV.init(m_device, "Textures/Gameboy/Gameboy_n", PNG);
-		if (FAILED(hr)) {
-			ERROR("Main", "InitDevice",
-				("Failed to initialize gameboy normal texture. HRESULT: " + std::to_string(hr)).c_str());
-			return hr;
-		}
-
-		hr = m_gameboyMetallicSRV.init(m_device, "Textures/Gameboy/Gameboy_m", PNG);
-		if (FAILED(hr)) {
-			ERROR("Main", "InitDevice",
-				("Failed to initialize gameboy metallic texture. HRESULT: " + std::to_string(hr)).c_str());
-			return hr;
-		}
-
-		hr = m_gameboyRoughnessSRV.init(m_device, "Textures/Gameboy/gameboy_r", PNG);
-		if (FAILED(hr)) {
-			ERROR("Main", "InitDevice",
-				("Failed to initialize gameboy roughness texture. HRESULT: " + std::to_string(hr)).c_str());
-			return hr;
-		}
-
-		hr = m_gameboyAOSRV.init(m_device, "Textures/Gameboy/gameboy_ao", PNG);
-		if (FAILED(hr)) {
-			ERROR("Main", "InitDevice",
-				("Failed to initialize gameboy AO texture. HRESULT: " + std::to_string(hr)).c_str());
-			return hr;
-		}
-
-		m_gameboy->setName("Gameboy");
-		m_actors.push_back(m_gameboy);
-		m_gameboy->getComponent<Transform>()->setTransform(EU::Vector3(-2.5f, -1.90f, 9.5f),
-																											 EU::Vector3(-0.30f, 0.45f, 0.0f),
-																											 EU::Vector3(1.0f, 1.0f, 1.0f));
+		m_sciFiToad->setName("Sci-Fi Toad");
+		m_actors.push_back(m_sciFiToad);
+		m_sciFiToad->getComponent<Transform>()->setTransform(EU::Vector3(0.0f, -1.90f, 10.5f),
+			EU::Vector3(0.0f, 3.14f, 0.0f),
+			EU::Vector3(1.0f, 1.0f, 1.0f));
 	}
 	else {
-		ERROR("Main", "InitDevice", "Failed to create Spitfire Actor.");
+		ERROR("Main", "InitDevice", "Failed to create Sci-Fi Toad Actor.");
 		return E_FAIL;
 	}
 
@@ -337,14 +361,13 @@ BaseApp::init() {
 		return hr;
 	}
 
-	// Initialize the Camera
 	m_camera.setLens(XM_PIDIV4, m_window.m_width / (float)m_window.m_height, 0.01f, 100.0f);
 	m_camera.setPosition(0.0f, 3.0f, -6.0f);
 
 	m_constantBufferStruct.LightColor = EU::Vector3(1.0f, 1.0f, 1.0f);
 	m_constantBufferStruct.LightDir = EU::Vector3(-0.20f, -1.0f, 1.0f);
 
-	// Initialize the Skybox
+	// Initialize the Skybox pass -> Carga de textura + creacion de buffers/shaders especificos para el skybox
 	m_skybox.init(m_device, &m_deviceContext, m_skyboxTex);
 
 	// Initialize default states (Rasterizer, DepthStencil)
@@ -360,7 +383,6 @@ BaseApp::init() {
 			("Failed to initialize default DepthStencilState. HRESULT: " + std::to_string(hr)).c_str());
 		return hr;
 	}
-
 	hr = m_defaultSampler.init(m_device);
 	if (FAILED(hr)) {
 		ERROR("Main", "InitDevice",
@@ -382,37 +404,75 @@ BaseApp::init() {
 	m_transparentPbrMaterial.setDomain(MaterialDomain::Transparent);
 	m_transparentPbrMaterial.setBlendMode(BlendMode::Alpha);
 
-	m_sciFiToadMaterial.setMaterial(&m_pbrMaterial);
-	m_sciFiToadMaterial.setAlbedo(&m_AlbedoSRV);
-	m_sciFiToadMaterial.setNormal(&m_NormalSRV);
-	m_sciFiToadMaterial.setMetallic(&m_MetallicSRV);
-	m_sciFiToadMaterial.setRoughness(&m_RoughnessSRV);
-	m_sciFiToadMaterial.setAO(&m_AOSRV);
-	if (m_EmissiveSRV.m_textureFromImg) {
-		m_sciFiToadMaterial.setEmissive(&m_EmissiveSRV);
-	}
-	m_sciFiToadMaterial.getParams().baseColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	m_sciFiToadMaterial.getParams().metallic = 1.0f;
-	m_sciFiToadMaterial.getParams().roughness = 1.0f;
-	m_sciFiToadMaterial.getParams().ao = 1.0f;
-	m_sciFiToadMaterial.getParams().normalScale = 1.0f;
-	m_sciFiToadMaterial.getParams().emissiveStrength = 1.0f;
-	m_sciFiToadMaterial.getParams().alphaCutoff = 0.5f;
+	auto configurePbrMaterial = [&](Material& material) {
+		material.setShader(&m_shaderProgram);
+		material.setRasterizerState(&m_defaultRasterizer);
+		material.setDepthStencilState(&m_defaultDepthStencil);
+		material.setSamplerState(&m_defaultSampler);
+		material.setDomain(MaterialDomain::Opaque);
+		material.setBlendMode(BlendMode::Opaque);
+		};
 
-	m_gameboyMaterial.setMaterial(&m_pbrMaterial);
-	m_gameboyMaterial.setAlbedo(&m_gameboyAlbedoSRV);
-	m_gameboyMaterial.setNormal(&m_gameboyNormalSRV);
-	m_gameboyMaterial.setMetallic(&m_gameboyMetallicSRV);
-	m_gameboyMaterial.setRoughness(&m_gameboyRoughnessSRV);
-	m_gameboyMaterial.setAO(&m_gameboyAOSRV);
+	configurePbrMaterial(m_gameboyPbrMaterial);
+	configurePbrMaterial(m_sciFiToadPbrMaterial);
+	configurePbrMaterial(m_sciFiToadGlassPbrMaterial);
+	configurePbrMaterial(m_sciFiToadHeadPbrMaterial);
+	m_sciFiToadGlassPbrMaterial.setDomain(MaterialDomain::Transparent);
+	m_sciFiToadGlassPbrMaterial.setBlendMode(BlendMode::Alpha);
+
+	m_gameboyMaterial.setMaterial(&m_gameboyPbrMaterial);
+	m_gameboyMaterial.setAlbedo(&m_AlbedoSRV);
+	m_gameboyMaterial.setNormal(&m_NormalSRV);
+	m_gameboyMaterial.setMetallic(&m_MetallicSRV);
+	m_gameboyMaterial.setRoughness(&m_RoughnessSRV);
+	m_gameboyMaterial.setAO(&m_AOSRV);
+	if (m_EmissiveSRV.m_textureFromImg) {
+		m_gameboyMaterial.setEmissive(&m_EmissiveSRV);
+	}
 	m_gameboyMaterial.getParams().baseColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	m_gameboyMaterial.getParams().metallic = 1.0f;
 	m_gameboyMaterial.getParams().roughness = 1.0f;
 	m_gameboyMaterial.getParams().ao = 1.0f;
 	m_gameboyMaterial.getParams().normalScale = 1.0f;
+	m_gameboyMaterial.getParams().emissiveStrength = 1.0f;
 	m_gameboyMaterial.getParams().alphaCutoff = 0.5f;
 
-	m_sciFiToadRenderMesh.destroy();
+	m_sciFiToadMaterial.setMaterial(&m_sciFiToadPbrMaterial);
+	m_sciFiToadMaterial.setAlbedo(&m_sciFiToadAlbedoSRV);
+	m_sciFiToadMaterial.setNormal(&m_sciFiToadNormalSRV);
+	m_sciFiToadMaterial.setMetallic(&m_sciFiToadMetallicSRV);
+	m_sciFiToadMaterial.setRoughness(&m_sciFiToadRoughnessSRV);
+	m_sciFiToadMaterial.setAO(&m_sciFiToadAOSRV);
+	m_sciFiToadMaterial.getParams().baseColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	m_sciFiToadMaterial.getParams().metallic = 1.0f;
+	m_sciFiToadMaterial.getParams().roughness = 1.0f;
+	m_sciFiToadMaterial.getParams().ao = 1.0f;
+	m_sciFiToadMaterial.getParams().normalScale = 1.0f;
+	m_sciFiToadMaterial.getParams().alphaCutoff = 0.5f;
+
+	m_sciFiToadGlassMaterial.setMaterial(&m_sciFiToadGlassPbrMaterial);
+	m_sciFiToadGlassMaterial.setAlbedo(&m_sciFiToadGlassAlbedoSRV);
+	m_sciFiToadGlassMaterial.setNormal(&m_sciFiToadGlassNormalSRV);
+	m_sciFiToadGlassMaterial.setRoughness(&m_sciFiToadGlassRoughnessSRV);
+	m_sciFiToadGlassMaterial.getParams().baseColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.35f);
+	m_sciFiToadGlassMaterial.getParams().metallic = 0.0f;
+	m_sciFiToadGlassMaterial.getParams().roughness = 0.25f;
+	m_sciFiToadGlassMaterial.getParams().ao = 1.0f;
+	m_sciFiToadGlassMaterial.getParams().normalScale = 1.0f;
+	m_sciFiToadGlassMaterial.getParams().alphaCutoff = 0.5f;
+
+	m_sciFiToadHeadMaterial.setMaterial(&m_sciFiToadHeadPbrMaterial);
+	m_sciFiToadHeadMaterial.setAlbedo(&m_sciFiToadHeadAlbedoSRV);
+	m_sciFiToadHeadMaterial.setNormal(&m_sciFiToadHeadNormalSRV);
+	m_sciFiToadHeadMaterial.setRoughness(&m_sciFiToadHeadRoughnessSRV);
+	m_sciFiToadHeadMaterial.getParams().baseColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	m_sciFiToadHeadMaterial.getParams().metallic = 0.0f;
+	m_sciFiToadHeadMaterial.getParams().roughness = 1.0f;
+	m_sciFiToadHeadMaterial.getParams().ao = 1.0f;
+	m_sciFiToadHeadMaterial.getParams().normalScale = 1.0f;
+	m_sciFiToadHeadMaterial.getParams().alphaCutoff = 0.5f;
+
+	m_gameboyRenderMesh.destroy();
 	for (const MeshComponent& meshComponent : m_model->GetMeshes()) {
 		Submesh submesh{};
 		hr = submesh.vertexBuffer.init(m_device, meshComponent, D3D11_BIND_VERTEX_BUFFER);
@@ -430,55 +490,71 @@ BaseApp::init() {
 		}
 
 		submesh.indexCount = meshComponent.m_numIndex;
+		submesh.localTransform = meshComponent.m_localTransform;
 		submesh.materialSlot = 0;
-		m_sciFiToadRenderMesh.getSubmeshes().push_back(std::move(submesh));
+		m_gameboyRenderMesh.getSubmeshes().push_back(std::move(submesh));
 	}
 
-	m_gameboyRenderMesh.destroy();
-	for (const MeshComponent& meshComponent : m_gameboyModel->GetMeshes()) {
+	m_sciFiToadRenderMesh.destroy();
+	for (const MeshComponent& meshComponent : m_sciFiToadModel->GetMeshes()) {
 		Submesh submesh{};
 		hr = submesh.vertexBuffer.init(m_device, meshComponent, D3D11_BIND_VERTEX_BUFFER);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
-				("Failed to initialize Gameboy vertex buffer. HRESULT: " + std::to_string(hr)).c_str());
+				("Failed to initialize Sci-Fi sciFiToad vertex buffer. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
 
 		hr = submesh.indexBuffer.init(m_device, meshComponent, D3D11_BIND_INDEX_BUFFER);
 		if (FAILED(hr)) {
 			ERROR("Main", "InitDevice",
-				("Failed to initialize Gameboy index buffer. HRESULT: " + std::to_string(hr)).c_str());
+				("Failed to initialize Sci-Fi sciFiToad index buffer. HRESULT: " + std::to_string(hr)).c_str());
 			return hr;
 		}
 
 		submesh.indexCount = meshComponent.m_numIndex;
-		submesh.materialSlot = 0;
-		m_gameboyRenderMesh.getSubmeshes().push_back(std::move(submesh));
+		submesh.localTransform = meshComponent.m_localTransform;
+		const std::string& meshName = meshComponent.m_name;
+		if (meshName.find("Eyes") != std::string::npos ||
+			(meshName.find("Head_low") != std::string::npos &&
+				meshName.find("GlassHead") == std::string::npos)) {
+			submesh.materialSlot = 2;
+		}
+		else if (meshName.find("Glass") != std::string::npos) {
+			submesh.materialSlot = 1;
+		}
+		else if (meshName.find("Head") != std::string::npos) {
+			submesh.materialSlot = 2;
+		}
+		else {
+			submesh.materialSlot = 0;
+		}
+		m_sciFiToadRenderMesh.getSubmeshes().push_back(std::move(submesh));
 	}
 
-	EU::TSharedPointer<MeshRendererComponent> meshRenderer = m_sciFiToad->getComponent<MeshRendererComponent>();
+	EU::TSharedPointer<MeshRendererComponent> meshRenderer = m_gameboy->getComponent<MeshRendererComponent>();
 	if (!meshRenderer) {
 		meshRenderer = EU::MakeShared<MeshRendererComponent>();
-		m_sciFiToad->addComponent(meshRenderer);
+		m_gameboy->addComponent(meshRenderer);
 	}
-	meshRenderer->setMesh(&m_sciFiToadRenderMesh);
-	meshRenderer->setMaterialInstance(&m_sciFiToadMaterial);
+	meshRenderer->setMesh(&m_gameboyRenderMesh);
+	meshRenderer->setMaterialInstance(&m_gameboyMaterial);
 	meshRenderer->setVisible(true);
 	meshRenderer->setCastShadow(true);
 
-	EU::TSharedPointer<MeshRendererComponent> spitFireMeshRenderer = m_gameboy->getComponent<MeshRendererComponent>();
-	if (!spitFireMeshRenderer) {
-		spitFireMeshRenderer = EU::MakeShared<MeshRendererComponent>();
-		m_gameboy->addComponent(spitFireMeshRenderer);
+	EU::TSharedPointer<MeshRendererComponent> sciFiToadMeshRenderer = m_sciFiToad->getComponent<MeshRendererComponent>();
+	if (!sciFiToadMeshRenderer) {
+		sciFiToadMeshRenderer = EU::MakeShared<MeshRendererComponent>();
+		m_sciFiToad->addComponent(sciFiToadMeshRenderer);
 	}
-	spitFireMeshRenderer->setMesh(&m_gameboyRenderMesh);
-	spitFireMeshRenderer->setMaterialInstance(&m_gameboyMaterial);
-	spitFireMeshRenderer->setVisible(true);
-	spitFireMeshRenderer->setCastShadow(true);
+	sciFiToadMeshRenderer->setMesh(&m_sciFiToadRenderMesh);
+	sciFiToadMeshRenderer->setMaterialInstances({ &m_sciFiToadMaterial, &m_sciFiToadGlassMaterial, &m_sciFiToadHeadMaterial });
+	sciFiToadMeshRenderer->setVisible(true);
+	sciFiToadMeshRenderer->setCastShadow(true);
 
 	m_directionalLightActor = EU::MakeShared<Actor>(m_device);
 	if (!m_directionalLightActor.isNull()) {
-		m_directionalLightActor->setName("DirectionalLight");
+		m_directionalLightActor->setName("Light Actor 1");
 		EU::TSharedPointer<LightComponent> lightComponent = m_directionalLightActor->getComponent<LightComponent>();
 		if (!lightComponent) {
 			lightComponent = EU::MakeShared<LightComponent>();
@@ -489,8 +565,17 @@ BaseApp::init() {
 		lightComponent->getLightData().direction = m_constantBufferStruct.LightDir;
 		lightComponent->getLightData().color = m_constantBufferStruct.LightColor;
 		lightComponent->getLightData().intensity = 1.0f;
-		lightComponent->setCastShadow(false);
+		lightComponent->getLightData().range = 12.0f;
+		lightComponent->setCastShadow(true);
 
+		EU::TSharedPointer<Transform> transform = m_directionalLightActor->getComponent<Transform>();
+		if (transform) {
+			transform->setTransform(EU::Vector3(0.0f, 3.0f, 0.0f),
+				EU::Vector3(0.0f, 0.0f, 0.0f),
+				EU::Vector3(1.0f, 1.0f, 1.0f));
+		}
+
+		m_actors.push_back(m_directionalLightActor);
 		m_sceneGraph.addEntity(m_directionalLightActor.get());
 	}
 
@@ -503,18 +588,18 @@ BaseApp::init() {
 		return hr;
 	}
 
-	hr = m_forwardRenderer.init(m_device);
+	hr = m_renderPipeline.init(m_device, RendererType::Deferred);
 	if (FAILED(hr)) {
 		ERROR("Main", "InitDevice",
-			("Failed to initialize ForwardRenderer. HRESULT: " + std::to_string(hr)).c_str());
+			("Failed to initialize RenderPipeline. HRESULT: " + std::to_string(hr)).c_str());
 		return hr;
 	}
 
 	return S_OK;
 }
 
-void BaseApp::update(float deltaTime)
-{
+void
+BaseApp::update(float deltaTime) {
 	// Update our time
 	static float t = 0.0f;
 	if (m_swapChain.m_driverType == D3D_DRIVER_TYPE_REFERENCE)
@@ -529,20 +614,126 @@ void BaseApp::update(float deltaTime)
 			dwTimeStart = dwTimeCur;
 		t = (dwTimeCur - dwTimeStart) / 1000.0f;
 	}
-	//update User Interface
+	// Update User Interface
 	m_gui.update(m_viewport, m_window);
-	bool show_demo_window = true;
-	//ImGui::ShowDemoWindow(&show_demo_window);
-	m_gui.drawViewportPanel(m_editorViewportPass.getSRV());
-	m_gui.drawRenderDebugPanel(m_forwardRenderer.getPreShadowSRV(), m_editorViewportPass.getSRV(), m_forwardRenderer.getShadowMapSRV());
-	m_gui.outliner(m_actors);
+	m_camera.updateViewMatrix();
+	if (m_gui.consumeCreateLightActorRequest()) {
+		EU::TSharedPointer<Actor> lightActor = createLightActor();
+		if (!lightActor.isNull()) {
+			m_gui.selectedActorIndex = static_cast<int>(m_actors.size()) - 1;
+		}
+	}
+
+	// --- SISTEMAS DE EDICIÓN (Teclado + Interfaz Gráfica) ---
+	ImGuiIO& io = ImGui::GetIO();
+
+	bool doCopy = (io.KeyCtrl && ImGui::IsKeyPressed((int)'C')) || m_gui.m_requestCopy;
+	bool doPaste = (io.KeyCtrl && ImGui::IsKeyPressed((int)'V')) || m_gui.m_requestPaste;
+	bool doCut = (io.KeyCtrl && ImGui::IsKeyPressed((int)'X')) || m_gui.m_requestCut;
+	bool doDuplicate = (io.KeyCtrl && ImGui::IsKeyPressed((int)'D')) || m_gui.m_requestDuplicate;
+
+	// Resetear banderas de la interfaz
+	m_gui.m_requestCopy = false;
+	m_gui.m_requestPaste = false;
+	m_gui.m_requestCut = false;
+	m_gui.m_requestDuplicate = false;
+
+	// --- CORTAR (Ctrl + X) ---
+	if (doCut) {
+		if (m_gui.selectedActorIndex >= 0 && m_gui.selectedActorIndex < static_cast<int>(m_actors.size())) {
+			EU::TSharedPointer<Actor> originalActor = m_actors[m_gui.selectedActorIndex];
+
+			if (!originalActor.isNull()) {
+				// 1. Clonar al portapapeles
+				m_clipboardActor = originalActor->clone(m_device);
+
+				// 2. DESVINCULACIÓN PREVENTIVA:
+				// Aseguramos que los hijos sepan que su padre va a desaparecer 
+				// para que el SceneGraph no intente leer memoria que vamos a liberar.
+				auto hierarchy = originalActor->getComponent<HierarchyComponent>();
+				if (hierarchy) {
+					for (Entity* child : hierarchy->m_children) {
+						auto childHier = child->getComponent<HierarchyComponent>();
+						if (childHier) childHier->m_parent = nullptr; // El hijo ahora es huérfano
+					}
+				}
+
+				// 3. Remover del SceneGraph
+				m_sceneGraph.removeEntity(originalActor.get());
+
+				// 4. Borrar del vector principal
+				m_actors.erase(m_actors.begin() + m_gui.selectedActorIndex);
+
+				m_gui.selectedActorIndex = -1;
+				MESSAGE("Editor", "Cut", "Actor cortado al portapapeles.");
+				Logger::Get().LogRaw("Device", "Actor cortado al portapapeles.", LogLevel::Message);
+			}
+		}
+	}
+
+	// --- COPIAR (Ctrl + C) ---
+	if (doCopy) {
+		if (m_gui.selectedActorIndex >= 0 && m_gui.selectedActorIndex < static_cast<int>(m_actors.size())) {
+			EU::TSharedPointer<Actor> originalActor = m_actors[m_gui.selectedActorIndex];
+			if (!originalActor.isNull()) {
+				m_clipboardActor = originalActor->clone(m_device);
+				MESSAGE("Editor", "Copy", "Actor copiado al portapapeles.");
+				Logger::Get().LogRaw("Device", "Actor copiado al portapapeles.", LogLevel::Message);
+			}
+		}
+	}
+
+	// --- PEGAR (Ctrl + V) ---
+	if (doPaste) {
+		if (!m_clipboardActor.isNull()) {
+			EU::TSharedPointer<Actor> pastedActor = m_clipboardActor->clone(m_device);
+			m_actors.push_back(pastedActor);
+			m_sceneGraph.addEntity(pastedActor.get());
+			m_gui.selectedActorIndex = static_cast<int>(m_actors.size()) - 1;
+			MESSAGE("Editor", "Paste", "Actor pegado exitosamente.");
+			Logger::Get().LogRaw("Device", "Actor pegado al portapapeles.", LogLevel::Message);
+		}
+	}
+
+	// --- DUPLICAR (Ctrl + D) ---
+	if (doDuplicate) {
+		if (m_gui.selectedActorIndex >= 0 && m_gui.selectedActorIndex < static_cast<int>(m_actors.size())) {
+			EU::TSharedPointer<Actor> originalActor = m_actors[m_gui.selectedActorIndex];
+			if (!originalActor.isNull()) {
+				EU::TSharedPointer<Actor> duplicatedActor = originalActor->clone(m_device);
+				m_actors.push_back(duplicatedActor);
+				m_sceneGraph.addEntity(duplicatedActor.get());
+				m_gui.selectedActorIndex = static_cast<int>(m_actors.size()) - 1;
+				MESSAGE("Editor", "Duplicate", "Actor duplicado exitosamente.");
+				Logger::Get().LogRaw("Device", "Actor duplicado al portapapeles.", LogLevel::Message);
+			}
+		}
+	}
+
 	EU::TSharedPointer<Actor> selectedActor;
 	if (m_gui.selectedActorIndex >= 0 &&
 		m_gui.selectedActorIndex < static_cast<int>(m_actors.size())) {
 		selectedActor = m_actors[m_gui.selectedActorIndex];
 	}
+
+  bool show_demo_window = true;
+
+	//ImGui::ShowDemoWindow(&show_demo_window);
+	m_gui.drawViewportPanel(m_editorViewportPass.getSRV(), m_actors, m_camera, m_window, selectedActor, m_lightIconTexture.m_textureFromImg);
+	m_gui.drawRenderDebugPanel(m_renderPipeline.getPreShadowSRV(), m_editorViewportPass.getSRV(), m_renderPipeline.getShadowMapSRV());
+	m_gui.drawGBufferDebugPanel(m_renderPipeline.getGBufferAlbedoMetallicSRV(),
+		m_renderPipeline.getGBufferNormalRoughnessSRV(),
+		m_renderPipeline.getGBufferWorldAoSRV(),
+		m_renderPipeline.getGBufferEmissiveAlphaSRV(),
+		selectedActor);
+	m_renderPipeline.setShadowFactorDebugEnabled(m_gui.m_visualizeDeferredShadowFactor);
+	m_renderPipeline.setDeferredDebugViewMode(m_gui.m_deferredDebugViewMode);
+	m_gui.outliner(m_actors);
+	if (m_gui.selectedActorIndex >= 0 &&
+		m_gui.selectedActorIndex < static_cast<int>(m_actors.size())) {
+		selectedActor = m_actors[m_gui.selectedActorIndex];
+	}
 	m_gui.inspectorGeneral(selectedActor);
-	m_gui.editTransform(m_camera, m_window, selectedActor);
 	if (m_gui.consumeSaveSceneRequest()) {
 		saveScene(getDefaultScenePath());
 	}
@@ -579,62 +770,54 @@ void BaseApp::update(float deltaTime)
 			m_editorViewportResizePending = true;
 			m_pendingViewportWidth = desiredW;
 			m_pendingViewportHeight = desiredH;
-
-			m_viewportResizeStableFrames = 0; // Reinicia estabilidad para evitar multiples triggers
 		}
 	}
-	
-	// Actualizar la matriz de proyeccion y vista
-	m_camera.updateViewMatrix();
 
 	XMStoreFloat4x4(&m_constantBufferStruct.View, XMMatrixTranspose(m_camera.getView()));
 	XMStoreFloat4x4(&m_constantBufferStruct.Projection, XMMatrixTranspose(m_camera.getProj()));
 	m_constantBufferStruct.CameraPos = m_camera.getPosition();
-
-	// Luz blanca fuerte
-	m_gui.vec3Control("Light Direction", &m_constantBufferStruct.LightDir.x, 0.1f);
-	m_gui.vec3Control("Light Color", &m_constantBufferStruct.LightColor.x, 0.1f);
-	if (!m_directionalLightActor.isNull()) {
-		EU::TSharedPointer<LightComponent> lightComponent = m_directionalLightActor->getComponent<LightComponent>();
-		if (lightComponent) {
-			lightComponent->getLightData().direction = m_constantBufferStruct.LightDir;
-			lightComponent->getLightData().color = m_constantBufferStruct.LightColor;
-		}
-	}
 
 	// Update Skybox Pass -> Solo necesita la vista sin traslacion + proyeccion para funcionar correctamente (ver metodo update de Skybox)
 	m_skybox.update(m_deviceContext, m_camera);
 
 	// Update Actors
 	m_sceneGraph.update(deltaTime, m_deviceContext);
+
+	g_Stats.frameTime = deltaTime;
+	g_Stats.fps = (deltaTime > 0.0f) ? (1.0f / deltaTime) : 0.0f;
 }
 
 void
-BaseApp::render() 
-{
-	handleEditorViewportResize();
+BaseApp::render() {
+	g_Stats.drawCalls = 0; // Resetear antes de empezar a dibujar
 
-	float ClearColor[4] = { 0.1f, 0.1f, 0.1f, 1.0f };
+  handleEditorViewportResize();
+
+  float ClearColor[4] = { 0.1f, 0.1f, 0.1f, 1.0f };
 
 	m_renderScene.clear();
 	m_sceneGraph.gatherRenderScene(m_renderScene, m_camera);
 	m_renderScene.skybox = &m_skybox;
-	m_forwardRenderer.render(m_deviceContext,
+	m_renderPipeline.render(
+		m_deviceContext,
 		m_camera,
 		m_renderScene,
-		m_editorViewportPass);
+		m_editorViewportPass
+	);
 
-	// 2) Volver al backbuffer principal
-	m_renderTargetView.render(m_deviceContext, m_depthStencilView, 1, ClearColor);
-	m_viewport.render(m_deviceContext);
-	m_depthStencilView.render(m_deviceContext);
+	// Desbindear targets de la pipeline
+	ID3D11RenderTargetView* nullRTV = nullptr;
+	m_deviceContext.m_deviceContext->OMSetRenderTargets(1, &nullRTV, nullptr);
 
-	// Set shader program
-	// 4) GUI
-	m_gui.render();
+	// AHORA bindear al backbuffer principal
+  m_renderTargetView.render(m_deviceContext, m_depthStencilView, 1, ClearColor);
+  m_viewport.render(m_deviceContext);
+  m_depthStencilView.render(m_deviceContext);
 
-	// Present our back buffer to our front buffer
-	m_swapChain.present();
+  // GUI
+  m_gui.render();
+
+  m_swapChain.present();
 }
 
 void
@@ -642,20 +825,38 @@ BaseApp::destroy() {
 	if (m_deviceContext.m_deviceContext) m_deviceContext.m_deviceContext->ClearState();
 	m_sceneGraph.destroy();
 	m_editorViewportPass.destroy();
-	m_forwardRenderer.destroy();
-	m_sciFiToadRenderMesh.destroy();
+	m_renderPipeline.destroy();
 	m_gameboyRenderMesh.destroy();
+	//m_drakefireRenderMesh.destroy();
+	m_sciFiToadRenderMesh.destroy();
 	m_AlbedoSRV.destroy();
 	m_MetallicSRV.destroy();
 	m_NormalSRV.destroy();
 	m_RoughnessSRV.destroy();
 	m_AOSRV.destroy();
 	m_EmissiveSRV.destroy();
+	//m_drakefireAlbedoSRV.destroy();
+	//m_drakefireNormalSRV.destroy();
+	//m_drakefireMetallicSRV.destroy();
+	//m_drakefireRoughnessSRV.destroy();
+	//m_drakefireAOSRV.destroy();
 	m_gameboyAlbedoSRV.destroy();
 	m_gameboyNormalSRV.destroy();
 	m_gameboyMetallicSRV.destroy();
 	m_gameboyRoughnessSRV.destroy();
 	m_gameboyAOSRV.destroy();
+	m_sciFiToadAlbedoSRV.destroy();
+	m_sciFiToadNormalSRV.destroy();
+	m_sciFiToadMetallicSRV.destroy();
+	m_sciFiToadRoughnessSRV.destroy();
+	m_sciFiToadAOSRV.destroy();
+	m_sciFiToadGlassAlbedoSRV.destroy();
+	m_sciFiToadGlassNormalSRV.destroy();
+	m_sciFiToadGlassRoughnessSRV.destroy();
+	m_sciFiToadHeadAlbedoSRV.destroy();
+	m_sciFiToadHeadNormalSRV.destroy();
+	m_sciFiToadHeadRoughnessSRV.destroy();
+	m_lightIconTexture.destroy();
 	m_defaultRasterizer.destroy();
 	m_defaultDepthStencil.destroy();
 	m_defaultSampler.destroy();
@@ -667,146 +868,191 @@ BaseApp::destroy() {
 	m_renderTargetView.destroy();
 	m_swapChain.destroy();
 	m_backBuffer.destroy();
-
 	if (m_guiInitialized) {
 		m_gui.destroy();
 		m_guiInitialized = false;
 	}
 	delete m_model;
 	m_model = nullptr;
+	//delete m_drakefireModel;
+	//m_drakefireModel = nullptr;
 	delete m_gameboyModel;
 	m_gameboyModel = nullptr;
-
+	delete m_sciFiToadModel;
+	m_sciFiToadModel = nullptr;
 	m_deviceContext.destroy();
 	m_device.destroy();
 }
 
 LRESULT
-BaseApp::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-	if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam)) {
-		return true;
-	}
+BaseApp::wndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+  if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam)) {
+    return true;
+  }
 
-	switch (message) {
-	case WM_CREATE: {
-		CREATESTRUCT* pCreate = reinterpret_cast<CREATESTRUCT*>(lParam);
-		SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)pCreate->lpCreateParams);
-	}
-	return 0;
-	case WM_PAINT: {
-		PAINTSTRUCT ps;
-		BeginPaint(hWnd, &ps);
-		EndPaint(hWnd, &ps);
-	}
-	return 0;
-	case WM_SIZE:
-	{
-		// Evita recrear cuando está minimizada
-		if (wParam == SIZE_MINIMIZED) return 0;
+  switch (message) {
+  case WM_CREATE: {
+    CREATESTRUCT* pCreate = reinterpret_cast<CREATESTRUCT*>(lParam);
+    SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)pCreate->lpCreateParams);
+  }
+                return 0;
+  case WM_PAINT: {
+    PAINTSTRUCT ps;
+    BeginPaint(hWnd, &ps);
+    EndPaint(hWnd, &ps);
+  }
+               return 0;
+  case WM_SIZE:
+  {
+    // Evita recrear cuando esta minimizada
+    if (wParam == SIZE_MINIMIZED) return 0;
 
-		UINT newW = LOWORD(lParam);
-		UINT newH = HIWORD(lParam);
-		if (newW == 0 || newH == 0) return 0;
+    unsigned int newW = LOWORD(lParam);
+    unsigned int newH = HIWORD(lParam);
+    if (newW == 0 || newH == 0) return 0;
 
-		// Recupera tu instancia BaseApp (lo mas común es guardarla en GWLP_USERDATA en WM_CREATE)
-		BaseApp* app = reinterpret_cast<BaseApp*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
-		if (app) app->onResize(newW, newH);
-		return 0;
-	}
-	case WM_DESTROY:
-		PostQuitMessage(0);
-		return 0;
-	}
-	return DefWindowProc(hWnd, message, wParam, lParam);
+    // Recupera tu instancia BaseApp (lo mas comun es guardarla en GWLP_USERDATA en WM_CREATE)
+    BaseApp* app = reinterpret_cast<BaseApp*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
+    if (app) app->onResize(newW, newH);
+    return 0;
+  }
+  case WM_DESTROY:
+    PostQuitMessage(0);
+    return 0;
+  }
+  return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
-void 
+void
 BaseApp::onResize(unsigned int newW, unsigned int newH) {
-	// 1) Actualiza window size (tu init lo calcula con GetClientRect solo una vez) :contentReference[oaicite:6]{index=6}
-	if (!m_d3dReady) {
-		// Aun asi puedes actualizar el tamano logico de la ventana
-		m_window.m_width = (int)newW;
-		m_window.m_height = (int)newH;
-		return;
-	}
+  // 1) Actualiza window size (tu init lo calcula con GetClientRect solo una vez) :contentReference[oaicite:6]{index=6}
+  if (!m_d3dReady) {
+    // Aun asi puedes actualizar el tamano logico de la ventana
+    m_window.m_width = (int)newW;
+    m_window.m_height = (int)newH;
+    return;
+  }
 
-	if (!m_deviceContext.m_deviceContext || !m_swapChain.m_swapChain) return;
-	if (newW == 0 || newH == 0) return;
+  if (!m_deviceContext.m_deviceContext || !m_swapChain.m_swapChain) return;
+  if (newW == 0 || newH == 0) return;
 
-	m_window.m_width = (int)newW;
-	m_window.m_height = (int)newH;
-	// 2) Desbindea targets actuales (clave antes de destruir)
-	ID3D11RenderTargetView* nullRTV = nullptr;
-	m_deviceContext.m_deviceContext->OMSetRenderTargets(1, &nullRTV, nullptr);
+  m_window.m_width = (int)newW;
+  m_window.m_height = (int)newH;
+  // 2) Desbindea targets actuales (clave antes de destruir)
+  ID3D11RenderTargetView* nullRTV = nullptr;
+  m_deviceContext.m_deviceContext->OMSetRenderTargets(1, &nullRTV, nullptr);
 
-	// 3) Libera recursos dependientes del tamano (RTV/DSV/Depth/BackBuffer)
-	m_renderTargetView.destroy();
-	m_depthStencilView.destroy();
-	m_depthStencil.destroy();
-	m_backBuffer.destroy();
+  // 3) Libera recursos dependientes del tamano (RTV/DSV/Depth/BackBuffer)
+  m_renderTargetView.destroy();
+  m_depthStencilView.destroy();
+  m_depthStencil.destroy();
+  m_backBuffer.destroy();
 
-	// 4) Resize swapchain
-	HRESULT hr = m_swapChain.resizeBuffers(newW, newH);
-	if (FAILED(hr)) return;
+  // 4) Resize swapchain
+  HRESULT hr = m_swapChain.resizeBuffers(newW, newH);
+  if (FAILED(hr)) return;
 
-	// 5) Re-obten backbuffer
-	hr = m_swapChain.getBackBuffer(m_backBuffer);
-	if (FAILED(hr)) return;
+  // 5) Re-obten backbuffer
+  hr = m_swapChain.getBackBuffer(m_backBuffer);
+  if (FAILED(hr)) return;
 
-	// 6) Re-crea RTV
-	hr = m_renderTargetView.init(m_device, m_backBuffer, DXGI_FORMAT_R8G8B8A8_UNORM);
-	if (FAILED(hr)) return;
+  // 6) Re-crea RTV
+  hr = m_renderTargetView.init(m_device, m_backBuffer, DXGI_FORMAT_R8G8B8A8_UNORM);
+  if (FAILED(hr)) return;
 
-	// 7) Re-crea Depth/DSV (tu init actual lo hace con m_window.m_width/m_height)
-	hr = m_depthStencil.init(m_device, newW, newH, DXGI_FORMAT_D24_UNORM_S8_UINT, D3D11_BIND_DEPTH_STENCIL, 4, 0);
-	if (FAILED(hr)) return;
+	// 7) Re-crea Depth/DSV
+	hr = m_depthStencil.init(m_device, newW, newH, DXGI_FORMAT_D24_UNORM_S8_UINT, D3D11_BIND_DEPTH_STENCIL, 1, 0);
+  if (FAILED(hr)) return;
 
-	hr = m_depthStencilView.init(m_device, m_depthStencil, DXGI_FORMAT_D24_UNORM_S8_UINT);
-	if (FAILED(hr)) return;
+  hr = m_depthStencilView.init(m_device, m_depthStencil, DXGI_FORMAT_D24_UNORM_S8_UINT);
+  if (FAILED(hr)) return;
 
-	// 8) Viewport
-	m_viewport.init(m_window);
+  // 8) Viewport
+  m_viewport.init(m_window);
 
-	// 9) Camara (aspect ratio) (tu camara lo calcula a partir de m_window)
-	m_camera.setLens(XM_PIDIV4, newW / (float)newH, 0.01f, 100.0f);
+  // 9) Camara (aspect ratio) (tu camara lo calcula a partir de m_window) 
+  m_camera.setLens(XM_PIDIV4, newW / (float)newH, 0.01f, 100.0f);
 }
 
 void BaseApp::handleEditorViewportResize()
 {
-	if (!m_editorViewportResizePending)
-		return;
+  if (!m_editorViewportResizePending)
+    return;
 
-	// Desbindear antes de tocar recursos
-	m_deviceContext.m_deviceContext->OMSetRenderTargets(0, nullptr, nullptr);
+  // Desbindear antes de tocar recursos
+  m_deviceContext.m_deviceContext->OMSetRenderTargets(0, nullptr, nullptr);
 
-	ID3D11ShaderResourceView* nullSRVs[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT] = {};
-	m_deviceContext.m_deviceContext->PSSetShaderResources(
-		0,
-		D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT,
-		nullSRVs
-	);
+  ID3D11ShaderResourceView* nullSRVs[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT] = {};
+  m_deviceContext.m_deviceContext->PSSetShaderResources(
+    0,
+    D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT,
+    nullSRVs
+  );
 
-	// Crear pass temporal nuevo
-	EditorViewportPass newPass;
-	HRESULT hr = newPass.init(m_device, m_pendingViewportWidth, m_pendingViewportHeight);
-	if (FAILED(hr))
-	{
-		// Si falla, conserva el pass actual
-		m_editorViewportResizePending = false;
-		return;
-	}
+  // Crear pass temporal nuevo
+  EditorViewportPass newPass;
+  HRESULT hr = newPass.init(m_device, m_pendingViewportWidth, m_pendingViewportHeight);
+  if (FAILED(hr))
+  {
+    // Si falla, conserva el pass actual
+    m_editorViewportResizePending = false;
+    return;
+  }
 
-	// Intercambio seguro: el pass viejo queda en newPass y se destruye al salir
-	m_editorViewportPass.swap(newPass);
-	m_forwardRenderer.resize(m_device, m_pendingViewportWidth, m_pendingViewportHeight);
+  // Intercambio seguro: el pass viejo queda en newPass y se destruye al salir
+  m_editorViewportPass.swap(newPass);
+  m_renderPipeline.resize(m_device, m_pendingViewportWidth, m_pendingViewportHeight);
 
-	m_editorViewportResizePending = false;
+  m_editorViewportResizePending = false;
 }
 
 std::string BaseApp::getDefaultScenePath() const
 {
-	CreateDirectoryA("Saved", nullptr);
-	return "Saved/DefaultScene.wvscene";
+  CreateDirectoryA("Saved", nullptr);
+  return "Saved/DefaultScene.wvscene";
+}
+
+EU::TSharedPointer<Actor> BaseApp::createLightActor(const std::string& name)
+{
+	EU::TSharedPointer<Actor> lightActor = EU::MakeShared<Actor>(m_device);
+	if (lightActor.isNull()) {
+		ERROR("Main", "createLightActor", "Failed to create Light Actor.");
+		return lightActor;
+	}
+
+	size_t lightActorCount = 0;
+	for (const auto& actor : m_actors) {
+		if (!actor.isNull() && !actor->getComponent<LightComponent>().isNull()) {
+			++lightActorCount;
+		}
+	}
+
+	lightActor->setName(name.empty() ? "Light Actor " + std::to_string(lightActorCount + 1) : name);
+
+	EU::TSharedPointer<LightComponent> lightComponent = lightActor->getComponent<LightComponent>();
+	if (!lightComponent) {
+		lightComponent = EU::MakeShared<LightComponent>();
+		lightActor->addComponent(lightComponent);
+	}
+
+	lightComponent->getLightData().type = LightType::Point;
+	lightComponent->getLightData().direction = EU::Vector3(-0.20f, -1.0f, 1.0f);
+	lightComponent->getLightData().color = EU::Vector3(1.0f, 1.0f, 1.0f);
+	lightComponent->getLightData().intensity = 1.0f;
+	lightComponent->getLightData().range = 12.0f;
+	lightComponent->setCastShadow(false);
+
+	EU::TSharedPointer<Transform> transform = lightActor->getComponent<Transform>();
+	if (transform) {
+		const float lightOffset = static_cast<float>(lightActorCount) * 2.0f;
+		transform->setTransform(EU::Vector3(lightOffset, 3.0f, 0.0f),
+			EU::Vector3(0.0f, 0.0f, 0.0f),
+			EU::Vector3(1.0f, 1.0f, 1.0f));
+	}
+
+	m_actors.push_back(lightActor);
+	m_sceneGraph.addEntity(lightActor.get());
+	return lightActor;
 }
 
 bool BaseApp::saveScene(const std::string& path)
@@ -872,6 +1118,23 @@ bool BaseApp::saveScene(const std::string& path)
 			}
 		}
 
+		EU::TSharedPointer<LightComponent> lightComponent = actor->getComponent<LightComponent>();
+		if (lightComponent) {
+			const LightData& light = lightComponent->getLightData();
+			stream << "LIGHT_COMPONENT "
+				<< static_cast<int>(light.type) << " "
+				<< light.color.x << " "
+				<< light.color.y << " "
+				<< light.color.z << " "
+				<< light.intensity << " "
+				<< light.direction.x << " "
+				<< light.direction.y << " "
+				<< light.direction.z << " "
+				<< light.range << " "
+				<< light.spotAngle << " "
+				<< (lightComponent->canCastShadow() ? 1 : 0) << "\n";
+		}
+
 		stream << "END_ACTOR\n";
 	}
 
@@ -919,11 +1182,23 @@ bool BaseApp::loadScene(const std::string& path)
 			std::string actorName;
 			stream >> actorIndex >> std::quoted(actorName);
 			currentActor = EU::TSharedPointer<Actor>();
+			while (actorIndex >= m_actors.size()) {
+				EU::TSharedPointer<Actor> newActor = EU::MakeShared<Actor>(m_device);
+				if (newActor.isNull()) {
+					break;
+				}
+				newActor->setName("Actor " + std::to_string(m_actors.size() + 1));
+				m_actors.push_back(newActor);
+				m_sceneGraph.addEntity(newActor.get());
+			}
 			if (actorIndex < m_actors.size()) {
 				currentActor = m_actors[actorIndex];
 			}
 			if (!currentActor.isNull()) {
 				currentActor->setName(actorName);
+				if (isSerializedLightActorName(actorName)) {
+					ensureDefaultLightComponent(currentActor);
+				}
 			}
 		}
 		else if (token == "POSITION" && !currentActor.isNull()) {
@@ -1000,6 +1275,35 @@ bool BaseApp::loadScene(const std::string& path)
 					}
 				}
 			}
+		}
+		else if (token == "LIGHT_COMPONENT" && !currentActor.isNull()) {
+			int type = 0;
+			int castShadow = 0;
+			LightData light{};
+			stream >> type
+				>> light.color.x
+				>> light.color.y
+				>> light.color.z
+				>> light.intensity
+				>> light.direction.x
+				>> light.direction.y
+				>> light.direction.z
+				>> light.range
+				>> light.spotAngle
+				>> castShadow;
+
+			if (type < static_cast<int>(LightType::Directional) || type > static_cast<int>(LightType::Spot)) {
+				type = static_cast<int>(LightType::Point);
+			}
+			light.type = static_cast<LightType>(type);
+
+			EU::TSharedPointer<LightComponent> lightComponent = currentActor->getComponent<LightComponent>();
+			if (!lightComponent) {
+				lightComponent = EU::MakeShared<LightComponent>();
+				currentActor->addComponent(lightComponent);
+			}
+			lightComponent->getLightData() = light;
+			lightComponent->setCastShadow(castShadow != 0);
 		}
 		else if (token == "LIGHT") {
 			stream >> m_constantBufferStruct.LightDir.x

@@ -127,3 +127,49 @@ Camera::updateViewMatrix() {
 	XMStoreFloat4x4(&m_view, view);
 	m_viewDirty = false;
 }
+
+void Camera::orbit(float deltaX, float deltaY) {
+	// 1. Usar tus funciones existentes para rotar los vectores locales
+	yaw(deltaX);
+	pitch(deltaY);
+
+	// 2. Reposicionar la cámara usando TU vector forward existente
+	// Posición = Target - (Forward * Distancia)
+	m_position = m_target - (m_forward * m_distance);
+
+	m_viewDirty = true;
+}
+
+void Camera::pan(float deltaX, float deltaY) {
+	float panSpeed = m_distance * 0.002f;
+
+	// 1. Mover el target usando TUS vectores locales
+	m_target = m_target - (m_right * (deltaX * panSpeed));
+	m_target = m_target + (m_up * (deltaY * panSpeed));
+
+	// 2. La cámara sigue al target
+	m_position = m_target - (m_forward * m_distance);
+
+	m_viewDirty = true;
+}
+
+void Camera::zoom(float deltaScroll) {
+	float zoomSpeed = m_distance * 0.1f;
+	m_distance -= deltaScroll * zoomSpeed;
+
+	if (m_distance < 0.1f) m_distance = 0.1f;
+
+	// 1. Acercar la cámara al target a lo largo de tu vector forward
+	m_position = m_target - (m_forward * m_distance);
+
+	m_viewDirty = true;
+}
+
+void Camera::focusOn(const EU::Vector3& newTarget, float newDistance) {
+	m_target = newTarget;
+	m_distance = newDistance;
+
+	// Reposicionamos la cámara al nuevo foco
+	m_position = m_target - (m_forward * m_distance);
+	m_viewDirty = true;
+}

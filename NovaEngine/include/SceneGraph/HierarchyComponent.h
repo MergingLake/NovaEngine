@@ -117,6 +117,23 @@ public:
 		);
 	}
 
+	/*
+		@brief Crea una copia profunda del HierarchyComponent.
+		Nota: Copiamos el padre para mantenerlo en la misma rama del SceneGraph,
+		pero NO copiamos los hijos para evitar referencias cruzadas corruptas.
+	*/
+	EU::TSharedPointer<Component> clone() const override {
+		HierarchyComponent* clonedRaw = new HierarchyComponent();
+
+		// El clon mantiene el mismo padre que el original
+		clonedRaw->m_parent = this->m_parent;
+
+		// NOTA: m_children se queda vacío por defecto gracias al constructor.
+		// No copiamos los hijos porque no los estamos duplicando en este momento.
+
+		return EU::TSharedPointer<Component>(clonedRaw);
+	}
+
 public:
 	Entity* m_parent = nullptr;
 	std::vector<Entity*> m_children;

@@ -9,7 +9,7 @@ class RenderScene;
 class EditorViewportPass;
 
 enum class
-	RenderType {
+	RendererType {
 	Forward = 0,
 	Deferred
 };

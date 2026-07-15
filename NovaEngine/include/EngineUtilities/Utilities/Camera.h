@@ -162,6 +162,17 @@ public:
 	*/
 	EU::Vector3 GetForward() const { return m_forward; }
 
+	void orbit(float deltaX, float deltaY);
+
+	void pan(float deltaX, float deltaY);
+
+	void zoom(float deltaScroll);
+
+	void focusOn(const EU::Vector3& newTarget, float newDistance);
+
+	// Nueva función para actualizar la matemática orbital
+	void updateOrbitViewMatrix();
+
 	/* 
 	 * @brief Converts an XMVECTOR to a Vector3 by extracting the x, y, and z components.
 	 * @param v The XMVECTOR to convert.
@@ -183,6 +194,9 @@ private:
 	EU::Vector3 m_right{ 1.0f, 0.0f, 0.0f }; /**< The right vector of the camera's orthonormal basis. */
 	EU::Vector3 m_up{ 0.0f, 1.0f, 0.0f }; /**< The up vector of the camera's orthonormal basis. */
 	EU::Vector3 m_forward{ 0.0f, 0.0f, 1.0f }; /**< The forward vector of the camera's orthonormal basis. */
+
+	EU::Vector3 m_target{ 0.0f, 0.0f, 0.0f };
+	float m_distance = 15.0f;
 
 	// Matrices almacenadas
 	XMFLOAT4X4 m_view{};
