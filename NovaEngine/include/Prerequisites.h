@@ -33,6 +33,8 @@
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
 
+#include <sol/sol.hpp>
+
 // MACROS
 #define SAFE_RELEASE(x) if(x != nullptr) x->Release(); x = nullptr;
 
@@ -137,5 +139,14 @@ enum
   TRANSFORM = 1,///< Componente de transformación.
   MESH = 2,     ///< Componente de malla.
   MATERIAL = 3,  ///< Componente de material.
-  HIERARCHY = 4 ///< Componente de jerarquía.
+  HIERARCHY = 4, ///< Componente de jerarquía.
+  SCRIPT = 5,    ///< Componente de lógica/comportamiento.
+  RIGIDBODY = 6,     ///< Componente de simulación física
+  BOX_COLLIDER = 7   ///< Componente de colisión
+};
+
+enum class EngineState {
+  EDITOR = 0,
+  PLAY = 1,
+  PAUSED = 2
 };

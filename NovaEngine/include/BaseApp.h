@@ -22,6 +22,9 @@
 #include "EngineUtilities/Utilities/EditorViewportPass.h"
 #include "ECS/LightComponent.h"
 #include "ECS/MeshRendererComponent.h"
+#include "ECS/LuaScriptComponent.h"
+#include "ECS/RigidbodyComponent.h"
+#include "ECS/BoxColliderComponent.h"
 #include "Rendering/Material.h"
 #include "Rendering/MaterialInstance.h"
 #include "Rendering/Mesh.h"
@@ -139,6 +142,21 @@ public:
 
 	std::string 
 		getDefaultScenePath() const;
+
+	EngineState 
+		getEngineState() const { return m_engineState; }
+
+	void 
+		startPlayMode();
+
+	void 
+		stopPlayMode();
+
+	void 
+		togglePauseMode();
+
+	void 
+		initScripting();
 
 private:
 	EU::TSharedPointer<Actor>
@@ -283,4 +301,7 @@ private:
 
 	// Portapapeles para copiar y pegar entidades
 	EU::TSharedPointer<Actor> m_clipboardActor;
+
+	EngineState m_engineState = EngineState::EDITOR;
+	sol::state m_luaState;
 };

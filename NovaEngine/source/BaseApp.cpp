@@ -160,6 +160,8 @@ BaseApp::init() {
 	}
 	m_d3dReady = true;
 
+	initScripting();
+
 	// Load Resources -> Modelos, Texturas e Interfaz de usuario
 	std::array<std::string, 6> faces = {
 		"Skybox/cubemap_0.png",
@@ -224,8 +226,12 @@ BaseApp::init() {
 		m_actors.push_back(m_gameboy);
 
 		m_gameboy->getComponent<Transform>()->setTransform(EU::Vector3(2.0f, -1.90f, 11.60f),
-			EU::Vector3(-0.60f, 3.0f, -0.20f),
-			EU::Vector3(1.0f, 1.0f, 1.0f));
+			EU::Vector3(0.f, 90.0f, 0.f),
+			EU::Vector3(0.02f, 0.02f, 0.02f));
+
+		auto floorCollider = EU::MakeShared<BoxColliderComponent>();
+		floorCollider->extents = EU::Vector3(10.0f, 0.5f, 10.0f);
+		m_gameboy->addComponent(floorCollider);
 	}
 	else {
 		ERROR("Main", "InitDevice", "Failed to create Gameboy Actor.");
@@ -326,6 +332,14 @@ BaseApp::init() {
 		m_sciFiToad->getComponent<Transform>()->setTransform(EU::Vector3(0.0f, -1.90f, 10.5f),
 			EU::Vector3(0.0f, 3.14f, 0.0f),
 			EU::Vector3(1.0f, 1.0f, 1.0f));
+
+		auto toadCollider = EU::MakeShared<BoxColliderComponent>();
+		toadCollider->extents = EU::Vector3(1.0f, 1.0f, 1.0f); // Tamaño de colisión
+		m_sciFiToad->addComponent(toadCollider);
+
+		auto toadRb = EU::MakeShared<RigidbodyComponent>();
+		toadRb->useGravity = true; // El sapo es afectado por la gravedad
+		m_sciFiToad->addComponent(toadRb);
 	}
 	else {
 		ERROR("Main", "InitDevice", "Failed to create Sci-Fi Toad Actor.");
@@ -736,6 +750,158 @@ BaseApp::update(float deltaTime) {
 	m_gui.inspectorGeneral(selectedActor);
 	if (m_gui.consumeSaveSceneRequest()) {
 		saveScene(getDefaultScenePath());
+	}
+
+	// 1. Procesar peticiones de la UI
+	if (m_gui.m_requestPlay) {
+		startPlayMode();
+		m_gui.m_requestPlay = false;
+	}
+	if (m_gui.m_requestPause) {
+		togglePauseMode();
+		m_gui.m_requestPause = false;
+	}
+	if (m_gui.m_requestStop) {
+		stopPlayMode();
+		m_gui.m_requestStop = false;
+	}
+
+	// 2. Ejecutar la lógica según el estado del motor
+	if (m_engineState == EngineState::PLAY) {
+
+		float physicsDeltaTime = deltaTime;
+		if (physicsDeltaTime > 0.05f) physicsDeltaTime = 0.016f;
+
+		// --- 1. RUNTIME: SISTEMA DE FÍSICAS Y COLISIONES ---
+		for (auto& actor : m_actors) {
+			if (actor.isNull()) continue;
+
+			auto rb = actor->getComponent<RigidbodyComponent>();
+			auto transform = actor->getComponent<Transform>();
+
+			if (!rb.isNull() && !transform.isNull() && !rb->isKinematic) {
+
+				// Aplicar gravedad
+				if (rb->useGravity) rb->velocity.y -= 9.81f * physicsDeltaTime;
+
+				EU::Vector3 currentPos = transform->getPosition();
+				EU::Vector3 nextPos = currentPos;
+				nextPos.x += rb->velocity.x * physicsDeltaTime;
+				nextPos.y += rb->velocity.y * physicsDeltaTime;
+				nextPos.z += rb->velocity.z * physicsDeltaTime;
+
+				// --- DETECCIÓN DE COLISIONES MTV (Minimum Translation Vector) ---
+				auto myCollider = actor->getComponent<BoxColliderComponent>();
+				if (!myCollider.isNull()) {
+					for (auto& otherActor : m_actors) {
+						if (actor.get() == otherActor.get() || otherActor.isNull()) continue;
+
+						auto otherCollider = otherActor->getComponent<BoxColliderComponent>();
+						auto otherTransform = otherActor->getComponent<Transform>();
+
+						if (!otherCollider.isNull() && !otherTransform.isNull()) {
+
+							EU::Vector3 otherMin, otherMax;
+							otherCollider->getWorldBounds(otherTransform.get(), otherMin, otherMax);
+
+							EU::Vector3 myFutureCenter = nextPos;
+							myFutureCenter.x += myCollider->centerOffset.x;
+							myFutureCenter.y += myCollider->centerOffset.y;
+							myFutureCenter.z += myCollider->centerOffset.z;
+
+							EU::Vector3 myMin(myFutureCenter.x - myCollider->extents.x, myFutureCenter.y - myCollider->extents.y, myFutureCenter.z - myCollider->extents.z);
+							EU::Vector3 myMax(myFutureCenter.x + myCollider->extents.x, myFutureCenter.y + myCollider->extents.y, myFutureCenter.z + myCollider->extents.z);
+
+							// Calculamos la penetración en cada eje
+							float overlapX = (std::min)(myMax.x, otherMax.x) - (std::max)(myMin.x, otherMin.x);
+							float overlapY = (std::min)(myMax.y, otherMax.y) - (std::max)(myMin.y, otherMin.y);
+							float overlapZ = (std::min)(myMax.z, otherMax.z) - (std::max)(myMin.z, otherMin.z);
+
+							// Si hay overlap en los 3 ejes, estamos chocando
+							if (overlapX > 0.0f && overlapY > 0.0f && overlapZ > 0.0f) {
+
+								// Resolvemos en el eje con MENOR penetración (MTV)
+								if (overlapX < overlapY && overlapX < overlapZ) {
+									// Choque en X (Lateral)
+									if (myFutureCenter.x < (otherMin.x + otherMax.x) * 0.5f) {
+										nextPos.x -= overlapX; // Empujar a la izquierda
+									}
+									else {
+										nextPos.x += overlapX; // Empujar a la derecha
+									}
+									rb->velocity.x = 0.0f;
+								}
+								else if (overlapY < overlapX && overlapY < overlapZ) {
+									// Choque en Y (Arriba/Abajo)
+									if (myFutureCenter.y < (otherMin.y + otherMax.y) * 0.5f) {
+										nextPos.y -= overlapY; // Pegó por abajo (techo)
+										if (rb->velocity.y > 0.0f) rb->velocity.y = 0.0f;
+									}
+									else {
+										nextPos.y += overlapY; // Pegó por arriba (suelo)
+										if (rb->velocity.y < 0.0f) rb->velocity.y = 0.0f;
+									}
+								}
+								else {
+									// Choque en Z (Profundidad)
+									if (myFutureCenter.z < (otherMin.z + otherMax.z) * 0.5f) {
+										nextPos.z -= overlapZ;
+									}
+									else {
+										nextPos.z += overlapZ;
+									}
+									rb->velocity.z = 0.0f;
+								}
+							}
+						}
+					}
+				}
+
+				// --- APLICAR CONSTRAINTS (Posición) ---
+				if (rb->freezePosX) nextPos.x = currentPos.x;
+				if (rb->freezePosY) nextPos.y = currentPos.y;
+				if (rb->freezePosZ) nextPos.z = currentPos.z;
+
+				transform->setPosition(nextPos);
+
+				// --- APLICAR ROTACIÓN Y CONSTRAINTS ---
+				EU::Vector3 currentRot = transform->getRotation();
+				EU::Vector3 nextRot = currentRot;
+				nextRot.x += rb->angularVelocity.x * physicsDeltaTime;
+				nextRot.y += rb->angularVelocity.y * physicsDeltaTime;
+				nextRot.z += rb->angularVelocity.z * physicsDeltaTime;
+
+				if (rb->freezeRotX) nextRot.x = currentRot.x;
+				if (rb->freezeRotY) nextRot.y = currentRot.y;
+				if (rb->freezeRotZ) nextRot.z = currentRot.z;
+
+				transform->setRotation(nextRot);
+			}
+		}
+
+		// --- 2. RUNTIME: ACTUALIZAR SCRIPTS LUA ---
+		for (auto& actor : m_actors) {
+			if (!actor.isNull()) {
+				auto luaScript = actor->getComponent<LuaScriptComponent>();
+				if (!luaScript.isNull()) {
+					luaScript->executeUpdate(deltaTime);
+				}
+			}
+		}
+	}
+	else if (m_engineState == EngineState::PAUSED) {
+
+		// --- MODO PAUSA ---
+		// El tiempo de simulación se detiene.
+		// Aquí no llamas a las físicas ni a los scripts.
+		// Pero PUEDES permitir que la cámara del editor se mueva para "inspeccionar" el mundo congelado.
+
+	}
+	else {
+
+		// --- MODO EDITOR ---
+		// Solo actualizamos cámara de editor, gizmos, transformaciones manuales, etc.
+
 	}
 
 	unsigned int desiredW = static_cast<unsigned int>(m_gui.m_viewportSize.x);
@@ -1332,4 +1498,100 @@ bool BaseApp::loadScene(const std::string& path)
 	const std::wstring pathW(path.begin(), path.end());
 	MESSAGE("Main", "loadScene", L"Loaded scene from '" << pathW << L"'")
 		return true;
+}
+
+void BaseApp::startPlayMode() {
+	if (m_engineState == EngineState::PLAY) return;
+
+	saveScene("PlayModeBackup.wvscene");
+	m_engineState = EngineState::PLAY;
+
+	for (auto& actor : m_actors) {
+		if (!actor.isNull()) {
+			auto rb = actor->getComponent<RigidbodyComponent>();
+			if (!rb.isNull()) {
+				// Reiniciamos la velocidad a 0 para que no salga disparado
+				rb->velocity = EU::Vector3(0.0f, 0.0f, 0.0f);
+				rb->angularVelocity = EU::Vector3(0.0f, 0.0f, 0.0f);
+			}
+		}
+	}
+
+	for (auto& actor : m_actors) {
+		if (!actor.isNull()) {
+			auto luaScript = actor->getComponent<LuaScriptComponent>();
+			auto transform = actor->getComponent<Transform>();
+
+			if (!luaScript.isNull() && !transform.isNull()) {
+				// Le pasamos la máquina virtual de BaseApp y el Transform
+				luaScript->startScript(m_luaState, transform.get());
+			}
+		}
+	}
+
+	MESSAGE("Engine", "PlayMode", "Entering game mode. Restored scene.");
+	Logger::Get().LogRaw("Engine", "Entering game mode.", LogLevel::Message);
+}
+
+void BaseApp::togglePauseMode() {
+	// Solo podemos pausar o reanudar si ya estamos dentro del entorno de simulación
+	if (m_engineState == EngineState::PLAY) {
+		m_engineState = EngineState::PAUSED;
+		MESSAGE("Engine", "PlayMode", "Game paused.");
+		Logger::Get().LogRaw("Engine", "Game paused.", LogLevel::Message);
+	}
+	else if (m_engineState == EngineState::PAUSED) {
+		m_engineState = EngineState::PLAY;
+		MESSAGE("Engine", "PlayMode", "Game resumed.");
+		Logger::Get().LogRaw("Engine", "Game resumed.", LogLevel::Message);
+	}
+}
+
+// Asegúrate de modificar tu stopPlayMode para que acepte detenerse desde la pausa:
+void BaseApp::stopPlayMode() {
+	// Cambiamos la condición para que detenga si estamos en PLAY o en PAUSED
+	if (m_engineState == EngineState::EDITOR) return;
+
+	m_engineState = EngineState::EDITOR;
+	loadScene("PlayModeBackup.wvscene");
+	MESSAGE("Engine", "PlayMode", "Returning to editor mode. Scene restored.");
+	Logger::Get().LogRaw("Engine", "Returning to editor mode.", LogLevel::Message);
+}
+
+void BaseApp::initScripting() {
+	// 1. Cargamos las librerías estándar de Lua (para que los scripts puedan sumar, usar strings, etc.)
+	m_luaState.open_libraries(sol::lib::base, sol::lib::math, sol::lib::string, sol::lib::os);
+
+	// 2. Redirigimos el 'print' de Lua a la consola de ImGui
+	m_luaState["print"] = [](const std::string& message) {
+		// Usamos el Logger que creamos anteriormente
+		Logger::Get().LogRaw("Lua", message, LogLevel::Message);
+	};
+
+	// 1. Exponer Vector3
+	m_luaState.new_usertype<EU::Vector3>("Vector3",
+		sol::constructors<EU::Vector3(), EU::Vector3(float, float, float)>(),
+		"x", &EU::Vector3::x,
+		"y", &EU::Vector3::y,
+		"z", &EU::Vector3::z
+	);
+
+	// 2. Exponer Transform
+	m_luaState.new_usertype<Transform>("Transform",
+		"getPosition", &Transform::getPosition,
+		"setPosition", &Transform::setPosition,
+		"getRotation", &Transform::getRotation,
+		"setRotation", &Transform::setRotation,
+		"getScale", &Transform::getScale,
+		"setScale", &Transform::setScale
+	);
+
+	try {
+		// Ejecutamos un string directo de código Lua
+		m_luaState.script("print('The Lua 5.4 Virtual Machine has been successfully initialized.')");
+	}
+	catch (const sol::error& e) {
+		// Si Lua detecta un error de sintaxis, lo atrapamos para que el motor no crashee
+		Logger::Get().LogRaw("LuaError", e.what(), LogLevel::Error);
+	}
 }

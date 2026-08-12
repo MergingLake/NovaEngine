@@ -361,6 +361,15 @@
     <ClInclude Include="include\Logger.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="include\ECS\LuaScriptComponent.h">
+      <Filter>include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ECS\RigidbodyComponent.h">
+      <Filter>include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ECS\BoxColliderComponent.h">
+      <Filter>include\ECS</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="bin\Skybox.hlsl">

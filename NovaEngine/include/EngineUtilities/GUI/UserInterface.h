@@ -7,6 +7,8 @@
 #include <imgui_internal.h>
 #include "Logger.h"
 #include "ImGuizmo.h"
+#include "ECS/BoxColliderComponent.h"
+#include "ECS/RigidbodyComponent.h"
 
 class Viewport;
 class Device;
@@ -199,6 +201,9 @@ public:
 	void
 		drawEditorDockspace();
 
+	void 
+		drawColliderDebug(const std::vector<EU::TSharedPointer<Actor>>& actors, Camera& camera);
+
 	/**
 	 * @brief Consume de forma atomica la solicitud de guardado emitida desde la UI.
 	 * @return `true` una sola vez por peticion de guardado.
@@ -282,6 +287,10 @@ public:
 	ImVec2 m_viewportSize = ImVec2(0.0f, 0.0f);
 	bool m_viewportHovered = false;
 	bool m_viewportFocused = false;
+
+	bool m_requestPlay = false;
+	bool m_requestStop = false;
+	bool m_requestPause = false;
 
 	struct LogEntry { LogLevel level; std::string message; };
 	std::vector<LogEntry> m_logBuffer;

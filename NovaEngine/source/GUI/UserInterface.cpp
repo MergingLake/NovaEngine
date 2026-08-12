@@ -620,9 +620,14 @@ GUI::inspectorGeneral(EU::TSharedPointer<Actor> actor) {
 	auto meshRenderer = actor->getComponent<MeshRendererComponent>();
 	auto lightComponent = actor->getComponent<LightComponent>();
 	auto transform = actor->getComponent<Transform>();
+	auto collider = actor->getComponent<BoxColliderComponent>();
+	auto rigidbody = actor->getComponent<RigidbodyComponent>();
+
 	const bool hasMeshRenderer = !meshRenderer.isNull();
 	const bool hasLightComponent = !lightComponent.isNull();
 	const bool hasTransform = !transform.isNull();
+	const bool hasCollider = !collider.isNull();
+	const bool hasRigidbody = !rigidbody.isNull();
 	const ImVec4 accentColor = GetActorTypeColor(actor);
 	const char* actorTypeLabel = GetActorTypeLabel(actor);
 
@@ -788,6 +793,71 @@ GUI::inspectorGeneral(EU::TSharedPointer<Actor> actor) {
 			ImGui::EndTable();
 		}
 	}
+
+	// ==========================================
+	// MENU BOX COLLIDER
+	// ==========================================
+	if (hasCollider && BeginInspectorSection("Box Collider")) {
+		if (BeginInspectorPropertyTable("##ColliderProperties")) {
+			DrawPropertyLabel("Extents (Half-Size)");
+			ImGui::DragFloat3("##ColliderExtents", &collider->extents.x, 0.05f, 0.01f, 1000.0f, "%.2f");
+
+			DrawPropertyLabel("Center Offset");
+			ImGui::DragFloat3("##ColliderOffset", &collider->centerOffset.x, 0.05f, -100.0f, 100.0f, "%.2f");
+
+			ImGui::EndTable();
+		}
+	}
+
+	// ==========================================
+	// MENU RIGIDBODY
+	// ==========================================
+	if (hasRigidbody && BeginInspectorSection("Rigidbody")) {
+		if (BeginInspectorPropertyTable("##RigidbodyProperties")) {
+			DrawPropertyLabel("Mass");
+			ImGui::DragFloat("##RBMass", &rigidbody->mass, 0.1f, 0.01f, 1000.0f, "%.2f");
+
+			bool useGravity = rigidbody->useGravity;
+			DrawPropertyToggle("Use Gravity", "##RBGravity", &useGravity);
+			rigidbody->useGravity = useGravity;
+
+			bool isKinematic = rigidbody->isKinematic;
+			DrawPropertyToggle("Is Kinematic", "##RBKinematic", &isKinematic);
+			rigidbody->isKinematic = isKinematic;
+
+			DrawPropertyLabel("Velocity");
+			ImGui::DragFloat3("##RBVelocity", &rigidbody->velocity.x, 0.1f, -100.0f, 100.0f, "%.2f");
+
+			DrawPropertyLabel("Angular Velocity");
+			ImGui::DragFloat3("##RBAngularVel", &rigidbody->angularVelocity.x, 0.1f, -100.0f, 100.0f, "%.2f");
+
+			ImGui::EndTable(); // Cerramos la tabla principal para hacer los constraints personalizados
+
+			// Sección de Constraints (estilo Unity)
+			ImGui::Spacing();
+			if (ImGui::TreeNodeEx("Constraints", ImGuiTreeNodeFlags_SpanAvailWidth)) {
+				ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(10.0f, 5.0f));
+
+				// Freeze Position
+				ImGui::TextDisabled("Freeze Position");
+				ImGui::SameLine(120.0f);
+				ImGui::Checkbox("X##fpx", &rigidbody->freezePosX); ImGui::SameLine();
+				ImGui::Checkbox("Y##fpy", &rigidbody->freezePosY); ImGui::SameLine();
+				ImGui::Checkbox("Z##fpz", &rigidbody->freezePosZ);
+
+				// Freeze Rotation
+				ImGui::TextDisabled("Freeze Rotation");
+				ImGui::SameLine(120.0f);
+				ImGui::Checkbox("X##frx", &rigidbody->freezeRotX); ImGui::SameLine();
+				ImGui::Checkbox("Y##fry", &rigidbody->freezeRotY); ImGui::SameLine();
+				ImGui::Checkbox("Z##frz", &rigidbody->freezeRotZ);
+
+				ImGui::PopStyleVar();
+				ImGui::TreePop();
+			}
+		}
+	}
+
 	ImGui::End();
 }
 
@@ -1093,9 +1163,15 @@ void GUI::drawStudioTopRibbon()
 
 			if (ImGui::BeginMenu("Test"))
 			{
-				ImGui::MenuItem("Play");
-				ImGui::MenuItem("Pause");
-				ImGui::MenuItem("Stop");
+				if (ImGui::MenuItem("Play")) {
+					m_requestPlay = true;
+				}
+				if (ImGui::MenuItem("Pause")) {
+					m_requestPause = true;
+				}
+				if (ImGui::MenuItem("Stop")) {
+					m_requestStop = true;
+				}
 				ImGui::EndMenu();
 			}
 
@@ -1343,6 +1419,7 @@ void GUI::drawViewportPanel(ID3D11ShaderResourceView* viewportSRV,
 		ImDrawList* gizmoDrawList = m_viewportDrawList;
 		m_viewportDrawList = ImGui::GetForegroundDrawList();
 		drawLightIcons(actors, camera, lightIconSRV);
+		drawColliderDebug(actors, camera);
 		m_viewportDrawList = gizmoDrawList;
 
 		// --- INPUT DE LA CAMARA DE EDITOR (ESTILO DCC) ---
@@ -1709,4 +1786,70 @@ void GUI::drawStatsPanel() {
 	ImGui::Text("Frame Time: %.3f ms", g_Stats.frameTime * 1000.0f);
 	ImGui::Text("Draw Calls: %d", g_Stats.drawCalls);
 	ImGui::End();
+}
+
+void GUI::drawColliderDebug(const std::vector<EU::TSharedPointer<Actor>>& actors, Camera& camera)
+{
+	if (!m_viewportDrawList || m_viewportSize.x <= 1.0f || m_viewportSize.y <= 1.0f) return;
+
+	for (const auto& actor : actors) {
+		if (actor.isNull()) continue;
+
+		auto collider = actor->getComponent<BoxColliderComponent>();
+		auto transform = actor->getComponent<Transform>();
+
+		if (collider.isNull() || transform.isNull()) continue;
+
+		// 1. Obtener los límites min y max en el mundo
+		EU::Vector3 minBounds, maxBounds;
+		collider->getWorldBounds(transform.get(), minBounds, maxBounds);
+
+		// 2. Definir las 8 esquinas del bounding box
+		XMVECTOR corners[8] = {
+			XMVectorSet(minBounds.x, minBounds.y, minBounds.z, 1.0f),
+			XMVectorSet(maxBounds.x, minBounds.y, minBounds.z, 1.0f),
+			XMVectorSet(maxBounds.x, maxBounds.y, minBounds.z, 1.0f),
+			XMVectorSet(minBounds.x, maxBounds.y, minBounds.z, 1.0f),
+			XMVectorSet(minBounds.x, minBounds.y, maxBounds.z, 1.0f),
+			XMVectorSet(maxBounds.x, minBounds.y, maxBounds.z, 1.0f),
+			XMVectorSet(maxBounds.x, maxBounds.y, maxBounds.z, 1.0f),
+			XMVectorSet(minBounds.x, maxBounds.y, maxBounds.z, 1.0f)
+		};
+
+		// 3. Proyectar a la pantalla 2D
+		ImVec2 screenCorners[8];
+		bool allBehindCamera = true;
+
+		for (int i = 0; i < 8; ++i) {
+			XMVECTOR projected = XMVector3Project(corners[i],
+				m_viewportPos.x, m_viewportPos.y,
+				m_viewportSize.x, m_viewportSize.y,
+				0.0f, 1.0f,
+				camera.getProj(), camera.getView(), XMMatrixIdentity());
+
+			// Si al menos un vértice está frente a la cámara (Z entre 0 y 1), lo dibujamos
+			float z = XMVectorGetZ(projected);
+			if (z >= 0.0f && z <= 1.0f) allBehindCamera = false;
+
+			screenCorners[i] = ImVec2(XMVectorGetX(projected), XMVectorGetY(projected));
+		}
+
+		if (allBehindCamera) continue;
+
+		// 4. Dibujar las 12 aristas (líneas) del cubo
+		// Color Verde Neón típico de Colliders (RGBA)
+		ImU32 col = IM_COL32(50, 255, 80, 200);
+		float thickness = 1.5f;
+
+		// Array con los pares de vértices que forman cada línea
+		int edges[12][2] = {
+			{0,1}, {1,2}, {2,3}, {3,0}, // Cara frontal
+			{4,5}, {5,6}, {6,7}, {7,4}, // Cara trasera
+			{0,4}, {1,5}, {2,6}, {3,7}  // Conexiones entre caras
+		};
+
+		for (int i = 0; i < 12; ++i) {
+			m_viewportDrawList->AddLine(screenCorners[edges[i][0]], screenCorners[edges[i][1]], col, thickness);
+		}
+	}
 }
